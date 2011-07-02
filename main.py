@@ -1,8 +1,7 @@
 from twisted.internet import reactor, ssl
-from twisted.web import server
 
 from irc import CommitNotificationFactory 
-from http import PostReceiveNotifier
+from http import make_site 
 from conf import HaroldConfiguration
 
 # read the config
@@ -10,7 +9,7 @@ config = HaroldConfiguration("harold.ini")
 
 # set up the backend
 irc_factory = CommitNotificationFactory(config)
-listener = server.Site(PostReceiveNotifier(irc_factory))
+listener = make_site(config, irc_factory)
 
 # connect to IRC
 if config.irc.use_ssl:

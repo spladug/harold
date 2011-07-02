@@ -6,7 +6,23 @@ from twisted.words.protocols import irc
 #from twisted.python import log
 from twisted.internet import reactor, protocol, task
 
+def messages_from_commit(repository, commit):
+    info = {}
+    print commit
+
+    info['repository'] = repository.name
+    info['url'] = ""
+    info['commit_id'] = commit['id'][:7]
+    info['author'] = commit['author']['name']
+    if 'username' in commit['author']:
+        info['author'] = commit['author']['username']
+    info['summary'] = commit['message'].splitlines()[0]
+
+    yield repository.format % info
+
 class CommitNotificationBot(irc.IRCClient):
+    lineRate = 1 # rate limit to 1 message / second
+
     def signedOn(self):
         for channel in self.factory.config.channels:
             self.join(channel)
@@ -26,8 +42,9 @@ class CommitNotificationBot(irc.IRCClient):
         self.me(channel, 
                 "is a bot written by spladug. I announce new GitHub commits.")
 
-    def notify(self, notification):
-        self.msg(self.factory.channel, notification)
+    def notify(self, repository, commit):
+        for line in messages_from_commit(repository, commit):
+            self.msg(repository.channel, line.encode("utf-8"))
 
 class CommitNotificationFactory(protocol.ClientFactory):
     protocol = CommitNotificationBot
@@ -44,17 +61,17 @@ class CommitNotificationFactory(protocol.ClientFactory):
         self.queued_notifications = deque()
         self.task = task.LoopingCall(self._dispatch)
 
-    def enqueue_notification(self, notification):
+    def enqueue_notification(self, repository, notification):
         if not len(self.queued_notifications):
-            self.task.start(2.0, now=False)
-        self.queued_notifications.append(notification)
+            self.task.start(1.0, now=False)
+        self.queued_notifications.append((repository, notification))
 
     def _dispatch(self):
         if len(self.clients) != 1:
             return
 
         notification = self.queued_notifications.popleft()
-        self.clients[0].notify(notification)
+        self.clients[0].notify(*notification)
 
         if len(self.queued_notifications) == 0:
             self.task.stop()

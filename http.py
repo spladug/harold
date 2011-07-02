@@ -1,16 +1,32 @@
 import json
 
-from twisted.web import resource
+from twisted.web import resource, server
 
 class PostReceiveNotifier(resource.Resource):
     isLeaf = True
 
-    def __init__(self, notifier):
+    def __init__(self, config, notifier):
+        self.config = config
         self.notifier = notifier
 
     def render_POST(self, request):
-        data = request.args['payload'][0]
-        parsed = json.loads(data)
+        if request.postpath != ["harold", "post-receive", 
+                                    self.config.http.secret]:
+            return
+
+        post_data = request.args['payload'][0]
+        parsed = json.loads(post_data)
+        repository_name = (parsed['repository']['owner']['name'] + '/' +
+                           parsed['repository']['name'])
+        repository = self.config.repositories_by_name[repository_name]
+
         for commit in parsed['commits']:
-            self.notifier.enqueue_notification(commit)
+            self.notifier.enqueue_notification(repository, commit)
+
         return ""
+
+def make_site(config, notifier):
+    root = PostReceiveNotifier(config, notifier)
+    site = server.Site(root)
+    site.displayTracebacks = False
+    return site

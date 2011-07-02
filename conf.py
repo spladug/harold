@@ -24,10 +24,11 @@ class HaroldConfiguration(object):
         # read the basic HTTP configuration
         self.http = _ConfigStub()
         self.http.port = parser.getint(HTTP_SECTION_NAME, "port")
+        self.http.secret = parser.get(HTTP_SECTION_NAME, "secret")
 
         # read the repositories
         self.repositories = []
-        self.repositories_by_secret = {}
+        self.repositories_by_name = {}
         self.channels = set()
         for section in parser.sections():
             if not section.startswith(REPOSITORY_PREFIX):
@@ -36,9 +37,8 @@ class HaroldConfiguration(object):
             repository = _ConfigStub()
             repository.name = section[len(REPOSITORY_PREFIX):]
             repository.channel = parser.get(section, "channel")
-            repository.secret = parser.get(section, "secret")
+            repository.format = parser.get(section, "format")
 
             self.repositories.append(repository)
-            self.repositories_by_secret.setdefault(
-                repository.secret, []).append(repository)
+            self.repositories_by_name[repository.name] = repository
             self.channels.add(repository.channel)
