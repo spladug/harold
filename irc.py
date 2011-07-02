@@ -19,6 +19,13 @@ class CommitNotificationBot(irc.IRCClient):
         irc.IRCClient.connectionLost(self)
         self.factory.clientConnectionGone(self)
 
+    def privmsg(self, user, channel, msg):
+        if not msg.startswith(self.nickname):
+            return
+
+        self.me(channel, 
+                "is a bot written by spladug. I announce new GitHub commits.")
+
     def notify(self, notification):
         self.msg(self.factory.channel, notification)
 
