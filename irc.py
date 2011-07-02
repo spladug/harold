@@ -7,10 +7,9 @@ from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol, task
 
 class CommitNotificationBot(irc.IRCClient):
-    nickname = "Harold"
-
     def signedOn(self):
-        self.join(self.factory.channel)
+        for channel in self.factory.config.channels:
+            self.join(channel)
 
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
@@ -26,8 +25,14 @@ class CommitNotificationBot(irc.IRCClient):
 class CommitNotificationFactory(protocol.ClientFactory):
     protocol = CommitNotificationBot
 
-    def __init__(self, channel):
-        self.channel = channel
+    def __init__(self, config):
+        self.config = config 
+
+        class _ConfiguredBot(CommitNotificationBot):
+            nickname = self.config.irc.nick
+            password = self.config.irc.password
+        self.protocol = _ConfiguredBot
+
         self.clients = []
         self.queued_notifications = deque()
         self.task = task.LoopingCall(self._dispatch)
