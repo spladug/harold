@@ -1,4 +1,5 @@
 import urllib
+from collections import deque
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Protocol
@@ -19,24 +20,57 @@ class _ResponseCollector(Protocol):
         else:
             self.finished.errback(None)
 
-def make_short_url(long_url):
-    encoded = urllib.quote_plus(long_url)
-    api_uri = "http://is.gd/create.php?format=simple&url=%s" % encoded
+class UrlShortener(object):
+    def __init__(self):
+        self.request_in_flight = False
+        self.pending_requests = deque()
 
-    agent = Agent(reactor)
-    d = agent.request('GET', api_uri)
+    def _onRequestComplete(self):
+        self.request_in_flight = False
 
-    def onResponse(response):
-        if response.code != 200:
+        if self.pending_requests:
+            d= self.pending_requests.popleft()
+            d.callback(None)
+
+    def _make_short_url(self, long_url):
+        self.request_in_flight = True
+
+        encoded = urllib.quote_plus(long_url)
+        api_uri = "http://is.gd/create.php?format=simple&url=%s" % encoded
+
+        agent = Agent(reactor)
+        d = agent.request('GET', api_uri)
+
+        def onRequestComplete(data):
+            self._onRequestComplete()
+            return data
+
+        def onResponse(response):
+            if response.code != 200:
+                onRequestComplete(None)
+                return long_url
+
+            bodyReceived = Deferred()
+            response.deliverBody(_ResponseCollector(bodyReceived))
+            bodyReceived.addBoth(onRequestComplete)
+            return bodyReceived
+        d.addCallback(onResponse)
+
+        def onError(failure):
             return long_url
+        d.addErrback(onError)
+        d.addErrback(onRequestComplete)
 
-        bodyReceived = Deferred()
-        response.deliverBody(_ResponseCollector(bodyReceived))
-        return bodyReceived
-    d.addCallback(onResponse)
+        return d
 
-    def onError(failure):
-        return long_url
-    d.addErrback(onError)
+    def _start_another_request(self, ignored, long_url):
+        return self._make_short_url(long_url)
 
-    return d
+    def make_short_url(self, long_url):
+        if not self.request_in_flight:
+            return self._make_short_url(long_url)
+
+        d = Deferred()
+        d.addCallback(self._start_another_request, long_url)
+        self.pending_requests.append(d)
+        return d
