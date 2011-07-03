@@ -21,12 +21,12 @@ class PostReceiveNotifier(resource.Resource):
         repository = self.config.repositories_by_name[repository_name]
 
         for commit in parsed['commits']:
-            self.notifier.enqueue_notification(repository, commit)
+            self.notifier.addCommit(repository, commit)
 
         return ""
 
-def make_site(config, notifier):
-    root = PostReceiveNotifier(config, notifier)
+def make_site(config, commitqueue):
+    root = PostReceiveNotifier(config, commitqueue)
     site = server.Site(root)
     site.displayTracebacks = False
     return site
