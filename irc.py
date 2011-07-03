@@ -35,7 +35,7 @@ class CommitNotificationBot(irc.IRCClient):
             return
 
         self.me(channel, 
-                "is a bot written by spladug. It announce new GitHub commits.")
+                "is a bot written by spladug. It announces new GitHub commits.")
 
     def onNewCommit(self, repository, commit):
         for line in messages_from_commit(repository, commit):
