@@ -8,7 +8,7 @@ class _Listener(resource.Resource):
         
     def render_POST(self, request):
         if request.postpath != [self.config.http.secret]:
-            return
+            return ""
 
         self._handle_request(request)
 
@@ -33,7 +33,9 @@ class _MessageListener(_Listener):
         self.dispatcher = dispatcher
 
     def _handle_request(self, request):
-        pass
+        channel = request.args['channel'][0]
+        message = request.args['message'][0]
+        self.dispatcher.send_message(channel, message)
 
 def make_site(config, dispatcher):
     harold = resource.Resource()
