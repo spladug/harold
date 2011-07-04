@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 from twisted.words.protocols import irc
-#from twisted.python import log
-from twisted.internet import reactor, protocol
+from twisted.internet import protocol, ssl
+from twisted.application import internet
 
 
 class IRCBot(irc.IRCClient):
@@ -12,11 +12,11 @@ class IRCBot(irc.IRCClient):
         for channel in self.factory.config.channels:
             self.join(channel)
 
-        self.factory.queue.registerConsumer(self)
+        self.factory.dispatcher.registerConsumer(self)
 
     def connectionLost(self, reason):
         irc.IRCClient.connectionLost(self)
-        self.factory.queue.deregisterConsumer(self)
+        self.factory.dispatcher.deregisterConsumer(self)
 
     def privmsg(self, user, channel, msg):
         if not msg.startswith(self.nickname):
@@ -29,9 +29,9 @@ class IRCBot(irc.IRCClient):
 
 
 class IRCBotFactory(protocol.ClientFactory):
-    def __init__(self, config, queue):
+    def __init__(self, config, dispatcher):
         self.config = config
-        self.queue = queue
+        self.dispatcher = dispatcher
 
         class _ConfiguredBot(IRCBot):
             nickname = self.config.irc.nick
@@ -41,5 +41,17 @@ class IRCBotFactory(protocol.ClientFactory):
     def clientConnectionLost(self, connector, reason):
         connector.connect()
 
-    def clientConnectionFailed(self, connector, reason):
-        reactor.stop()
+
+def make_service(config, dispatcher):
+    irc_factory = IRCBotFactory(config, dispatcher)
+
+    if config.irc.use_ssl:
+        context_factory = ssl.ClientContextFactory()
+        return internet.SSLClient(config.irc.host,
+                                  config.irc.port,
+                                  irc_factory,
+                                  context_factory)
+    else:
+        return internet.TCPClient(config.irc.host,
+                                  config.irc.port,
+                                  irc_factory)

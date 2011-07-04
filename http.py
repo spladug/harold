@@ -1,4 +1,5 @@
 from twisted.web import resource, server
+from twisted.application import internet
 
 from postreceive import PostReceiveDispatcher
 
@@ -41,7 +42,7 @@ class _MessageListener(_Listener):
         self.dispatcher.send_message(channel, message)
 
 
-def make_site(config, dispatcher):
+def make_service(config, dispatcher):
     harold = resource.Resource()
     harold.putChild('post-receive', _PostReceiveListener(config, dispatcher))
     harold.putChild('message', _MessageListener(config, dispatcher))
@@ -52,4 +53,4 @@ def make_site(config, dispatcher):
     site = server.Site(root)
     site.displayTracebacks = False
 
-    return site
+    return internet.TCPServer(config.http.port, site)
