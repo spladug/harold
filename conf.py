@@ -10,7 +10,14 @@ class _ConfigStub(object):
 
 class HaroldConfiguration(object):
     def __init__(self, filenames):
-        parser = RawConfigParser()
+        parser = RawConfigParser({
+            'password': None,
+            'use_ssl': False,
+            'branch_filters': [],
+            'format': ('%(author)s committed %(commit_id)s (%(url)s) to ' +
+                       '%(repository)s: %(summary)s')
+
+        })
         parser.read(filenames)
 
         # read the basic IRC configuration
