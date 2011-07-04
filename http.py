@@ -1,35 +1,49 @@
-import json
-
 from twisted.web import resource, server
 
-class PostReceiveNotifier(resource.Resource):
-    isLeaf = True
+from postreceive import PostReceiveDispatcher
 
-    def __init__(self, config, notifier):
+class _Listener(resource.Resource):
+    def __init__(self, config):
         self.config = config
-        self.notifier = notifier
-
+        
     def render_POST(self, request):
-        if request.postpath != ["harold", "post-receive", 
-                                    self.config.http.secret]:
+        if request.postpath != [self.config.http.secret]:
             return
 
-        post_data = request.args['payload'][0]
-        parsed = json.loads(post_data)
-        repository_name = (parsed['repository']['owner']['name'] + '/' +
-                           parsed['repository']['name'])
-        repository = self.config.repositories_by_name[repository_name]
-        branch = parsed['ref'].split('/')[-1]
-
-        if not repository.branches or branch in repository.branches:
-            for commit in parsed['commits']:
-                commit['branch'] = branch
-                self.notifier.addCommit(repository, commit)
+        self._handle_request(request)
 
         return ""
 
-def make_site(config, commitqueue):
-    root = PostReceiveNotifier(config, commitqueue)
+class _PostReceiveListener(_Listener):
+    isLeaf = True
+
+    def __init__(self, config, dispatcher):
+        _Listener.__init__(self, config)
+        self.dispatcher = PostReceiveDispatcher(config, dispatcher) 
+
+    def _handle_request(self, request):
+        post_data = request.args['payload'][0]
+        self.dispatcher.dispatch(post_data)
+
+class _MessageListener(_Listener):
+    isLeaf = True
+
+    def __init__(self, config, dispatcher):
+        _Listener.__init__(self, config)
+        self.dispatcher = dispatcher
+
+    def _handle_request(self, request):
+        pass
+
+def make_site(config, dispatcher):
+    harold = resource.Resource()
+    harold.putChild('post-receive', _PostReceiveListener(config, dispatcher))
+    harold.putChild('message', _MessageListener(config, dispatcher))
+
+    root = resource.Resource()
+    root.putChild('harold', harold)
+
     site = server.Site(root)
     site.displayTracebacks = False
+
     return site

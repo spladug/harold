@@ -4,21 +4,8 @@ from twisted.words.protocols import irc
 #from twisted.python import log
 from twisted.internet import reactor, protocol
 
-def messages_from_commit(repository, commit):
-    info = {}
 
-    info['repository'] = repository.name
-    info['url'] = commit['short_url']
-    info['commit_id'] = commit['id'][:7]
-    info['author'] = commit['author']['name']
-    if 'username' in commit['author']:
-        info['author'] = commit['author']['username']
-    info['summary'] = commit['message'].splitlines()[0]
-    info['branch'] = commit['branch']
-
-    yield repository.format % info
-
-class CommitNotificationBot(irc.IRCClient):
+class IRCBot(irc.IRCClient):
     lineRate = 1 # rate limit to 1 message / second
 
     def signedOn(self):
@@ -38,16 +25,15 @@ class CommitNotificationBot(irc.IRCClient):
         self.me(channel, 
                 "is a bot written by spladug. It announces new GitHub commits.")
 
-    def onNewCommit(self, repository, commit):
-        for line in messages_from_commit(repository, commit):
-            self.msg(repository.channel, line.encode("utf-8"))
+    def send_message(self, channel, message):
+        self.msg(channel, message.encode('utf-8'))
 
-class CommitNotificationBotFactory(protocol.ClientFactory):
+class IRCBotFactory(protocol.ClientFactory):
     def __init__(self, config, queue):
         self.config = config 
         self.queue = queue
 
-        class _ConfiguredBot(CommitNotificationBot):
+        class _ConfiguredBot(IRCBot):
             nickname = self.config.irc.nick
             password = self.config.irc.password
         self.protocol = _ConfiguredBot
