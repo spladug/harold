@@ -2,7 +2,7 @@
 
 Harold is a daemon that listens on HTTP for a notification of activity from GitHub's [post-receive hooks](http://help.github.com/post-receive-hooks/) and publishes commit data to an IRC channel.
 
-Harold is run by executing `main.py`. It looks for configuration in the current directory in `harold.ini`. Harold depends on Twisted.
+Harold is run with `twistd`, using the `harold.tac` file. It looks for configuration in the current directory in `harold.ini`. Harold depends on Twisted.
 
 # Configuring Harold
 
