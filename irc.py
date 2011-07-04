@@ -14,6 +14,7 @@ def messages_from_commit(repository, commit):
     if 'username' in commit['author']:
         info['author'] = commit['author']['username']
     info['summary'] = commit['message'].splitlines()[0]
+    info['branch'] = commit['branch']
 
     yield repository.format % info
 

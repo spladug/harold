@@ -1,4 +1,4 @@
-from ConfigParser import RawConfigParser
+from ConfigParser import RawConfigParser, NoOptionError
 
 HAROLD_PREFIX = "harold"
 IRC_SECTION_NAME = HAROLD_PREFIX + ":" + "irc"
@@ -38,6 +38,14 @@ class HaroldConfiguration(object):
             repository.name = section[len(REPOSITORY_PREFIX):]
             repository.channel = parser.get(section, "channel")
             repository.format = parser.get(section, "format")
+
+            # parse the branch filters
+            try:
+                branch_list = parser.get(section, "branch_filters")
+                repository.branches = [x.strip() for x in
+                                       branch_list.split(',') if x]
+            except NoOptionError:
+                repository.branches = []
 
             self.repositories.append(repository)
             self.repositories_by_name[repository.name] = repository

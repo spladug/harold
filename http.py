@@ -19,9 +19,12 @@ class PostReceiveNotifier(resource.Resource):
         repository_name = (parsed['repository']['owner']['name'] + '/' +
                            parsed['repository']['name'])
         repository = self.config.repositories_by_name[repository_name]
+        branch = parsed['ref'].split('/')[-1]
 
-        for commit in parsed['commits']:
-            self.notifier.addCommit(repository, commit)
+        if not repository.branches or branch in repository.branches:
+            for commit in parsed['commits']:
+                commit['branch'] = branch
+                self.notifier.addCommit(repository, commit)
 
         return ""
 

@@ -46,6 +46,11 @@ Server password to use when connecting to IRC.
 
 IRC channel to send commit notifications to.
 
+### branch\_filters
+
+Comma-delimited list of branches. Only commits from
+these branches will be announced. Defaults to showing all commits.
+
 ### format
 
 A python format string used to render the commit notification messages for this repository.
@@ -57,6 +62,7 @@ Available format fields are:
 * `commit_id` - First 7 characters of the commit SHA.
 * `author` - The GitHub username, or if not present, real name of the author.
 * `summary` - The first line of the commit message.
+* `branch` - Which branch the commit was made on.
 
 ## Example configuration file
 
