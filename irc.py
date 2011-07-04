@@ -6,7 +6,7 @@ from twisted.internet import reactor, protocol
 
 
 class IRCBot(irc.IRCClient):
-    lineRate = 1 # rate limit to 1 message / second
+    lineRate = 1  # rate limit to 1 message / second
 
     def signedOn(self):
         for channel in self.factory.config.channels:
@@ -27,9 +27,10 @@ class IRCBot(irc.IRCClient):
     def send_message(self, channel, message):
         self.msg(channel, message.encode('utf-8'))
 
+
 class IRCBotFactory(protocol.ClientFactory):
     def __init__(self, config, queue):
-        self.config = config 
+        self.config = config
         self.queue = queue
 
         class _ConfiguredBot(IRCBot):

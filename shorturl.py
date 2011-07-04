@@ -6,6 +6,7 @@ from twisted.internet.protocol import Protocol
 from twisted.internet.defer import Deferred
 from twisted.web.client import Agent, ResponseDone
 
+
 class _ResponseCollector(Protocol):
     def __init__(self, finished):
         self.finished = finished
@@ -20,6 +21,7 @@ class _ResponseCollector(Protocol):
         else:
             self.finished.errback(None)
 
+
 class UrlShortener(object):
     def __init__(self):
         self.request_in_flight = False
@@ -29,7 +31,7 @@ class UrlShortener(object):
         self.request_in_flight = False
 
         if self.pending_requests:
-            d= self.pending_requests.popleft()
+            d = self.pending_requests.popleft()
             d.callback(None)
 
     def _make_short_url(self, long_url):

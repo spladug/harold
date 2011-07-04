@@ -1,6 +1,7 @@
 import json
 
-from shorturl import UrlShortener 
+from shorturl import UrlShortener
+
 
 class PostReceiveDispatcher(object):
     def __init__(self, config, dispatcher):
@@ -11,6 +12,7 @@ class PostReceiveDispatcher(object):
     def _dispatch_commit(self, repository, branch, commit):
         author = commit['author']
         d = self.shortener.make_short_url(commit['url'])
+
         def onUrlShortened(short_url):
             self.dispatcher.send_message(repository.channel,
                                          repository.format % {

@@ -5,8 +5,10 @@ IRC_SECTION_NAME = HAROLD_PREFIX + ":" + "irc"
 HTTP_SECTION_NAME = HAROLD_PREFIX + ":" + "http"
 REPOSITORY_PREFIX = HAROLD_PREFIX + ":" + "repository" + ":"
 
+
 class _ConfigStub(object):
     pass
+
 
 class HaroldConfiguration(object):
     def __init__(self, filenames):
@@ -16,7 +18,6 @@ class HaroldConfiguration(object):
             'branch_filters': [],
             'format': ('%(author)s committed %(commit_id)s (%(url)s) to ' +
                        '%(repository)s: %(summary)s')
-
         })
         parser.read(filenames)
 
