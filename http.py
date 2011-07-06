@@ -42,10 +42,40 @@ class _MessageListener(_Listener):
         self.dispatcher.send_message(channel, message)
 
 
+class _SetTopicListener(_Listener):
+    isLeaf = True
+
+    def __init__(self, config, dispatcher):
+        _Listener.__init__(self, config)
+        self.dispatcher = dispatcher
+
+    def _handle_request(self, request):
+        channel = request.args['channel'][0]
+        new_topic = request.args['topic'][0]
+        self.dispatcher.set_topic(channel, new_topic)
+
+
+class _RestoreTopicListener(_Listener):
+    isLeaf = True
+
+    def __init__(self, config, dispatcher):
+        _Listener.__init__(self, config)
+        self.dispatcher = dispatcher
+
+    def _handle_request(self, request):
+        channel = request.args['channel'][0]
+        self.dispatcher.restore_topic(channel)
+
+
 def make_service(config, dispatcher):
     harold = resource.Resource()
     harold.putChild('post-receive', _PostReceiveListener(config, dispatcher))
     harold.putChild('message', _MessageListener(config, dispatcher))
+
+    topic_root = resource.Resource()
+    harold.putChild('topic', topic_root)
+    topic_root.putChild('set', _SetTopicListener(config, dispatcher))
+    topic_root.putChild('restore', _RestoreTopicListener(config, dispatcher))
 
     root = resource.Resource()
     root.putChild('harold', harold)

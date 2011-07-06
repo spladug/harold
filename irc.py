@@ -9,10 +9,17 @@ class IRCBot(irc.IRCClient):
     lineRate = 1  # rate limit to 1 message / second
 
     def signedOn(self):
+        self.topics = {}
+        self.topic_i_just_set = None
+
         for channel in self.factory.config.channels:
             self.join(channel)
 
         self.factory.dispatcher.registerConsumer(self)
+
+    def topicUpdated(self, user, channel, topic):
+        if topic != self.topic_i_just_set:
+            self.topics[channel] = topic
 
     def connectionLost(self, reason):
         irc.IRCClient.connectionLost(self)
@@ -26,6 +33,13 @@ class IRCBot(irc.IRCClient):
 
     def send_message(self, channel, message):
         self.msg(channel, message.encode('utf-8'))
+
+    def set_topic(self, channel, topic):
+        self.topic_i_just_set = topic
+        self.send_message("ChanServ", " ".join(("TOPIC", channel, topic)))
+
+    def restore_topic(self, channel):
+        self.set_topic(channel, self.topics[channel])
 
 
 class IRCBotFactory(protocol.ClientFactory):
