@@ -3,6 +3,11 @@
 from twisted.words.protocols import irc
 from twisted.internet import protocol, ssl
 from twisted.application import internet
+from twisted.web import resource
+
+from dispatcher import Dispatcher
+from http import ProtectedResource
+from postreceive import PostReceiveDispatcher
 
 
 class IRCBot(irc.IRCClient):
@@ -56,9 +61,70 @@ class IRCBotFactory(protocol.ClientFactory):
         connector.connect()
 
 
-def make_service(config, dispatcher):
-    irc_factory = IRCBotFactory(config, dispatcher)
+class _PostReceiveListener(ProtectedResource):
+    isLeaf = True
 
+    def __init__(self, config, dispatcher):
+        ProtectedResource.__init__(self, config)
+        self.dispatcher = PostReceiveDispatcher(config, dispatcher)
+
+    def _handle_request(self, request):
+        post_data = request.args['payload'][0]
+        self.dispatcher.dispatch(post_data)
+
+
+class _MessageListener(ProtectedResource):
+    isLeaf = True
+
+    def __init__(self, config, dispatcher):
+        ProtectedResource.__init__(self, config)
+        self.dispatcher = dispatcher
+
+    def _handle_request(self, request):
+        channel = request.args['channel'][0]
+        message = request.args['message'][0]
+        self.dispatcher.send_message(channel, message)
+
+
+class _SetTopicListener(ProtectedResource):
+    isLeaf = True
+
+    def __init__(self, config, dispatcher):
+        ProtectedResource.__init__(self, config)
+        self.dispatcher = dispatcher
+
+    def _handle_request(self, request):
+        channel = request.args['channel'][0]
+        new_topic = request.args['topic'][0]
+        self.dispatcher.set_topic(channel, new_topic)
+
+
+class _RestoreTopicListener(ProtectedResource):
+    isLeaf = True
+
+    def __init__(self, config, dispatcher):
+        ProtectedResource.__init__(self, config)
+        self.dispatcher = dispatcher
+
+    def _handle_request(self, request):
+        channel = request.args['channel'][0]
+        self.dispatcher.restore_topic(channel)
+
+
+def make_service(config, root):
+    dispatcher = Dispatcher()
+
+    # add the http resources
+    root.putChild('post-receive', _PostReceiveListener(config, dispatcher))
+    root.putChild('message', _MessageListener(config, dispatcher))
+
+    topic_root = resource.Resource()
+    root.putChild('topic', topic_root)
+    topic_root.putChild('set', _SetTopicListener(config, dispatcher))
+    topic_root.putChild('restore', _RestoreTopicListener(config, dispatcher))
+
+    # set up the IRC client
+    irc_factory = IRCBotFactory(config, dispatcher)
     if config.irc.use_ssl:
         context_factory = ssl.ClientContextFactory()
         return internet.SSLClient(config.irc.host,
