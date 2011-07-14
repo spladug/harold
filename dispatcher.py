@@ -1,12 +1,3 @@
-def queueable(fn):
-    """Decorator that appends action to queue if consumer not available."""
-    def _queueable(self, *args):
-        if self.consumer:
-            fn(self, *args)
-        else:
-            self.queue.append((fn, args))
-    return _queueable
-
 class Dispatcher(object):
     def __init__(self):
         self.consumer = None
@@ -17,23 +8,25 @@ class Dispatcher(object):
         self.consumer = consumer
 
         # throw all the queued events at the consumer
-        for fn, args in self.queue:
-            fn(self, *args)
+        for fn_name, args, kwargs in self.queue:
+            self._apply(fn_name, args, kwargs)
         self.queues = []
 
     def deregisterConsumer(self, consumer):
         assert self.consumer is not None
         self.consumer = None
 
-    @queueable
-    def send_message(self, channel, message):
-        self.consumer.send_message(channel, message)
+    def _apply(self, fn_name, args, kwargs):
+        fn = getattr(self.consumer, fn_name)
+        fn(*args, **kwargs)
 
-    @queueable
-    def set_topic(self, channel, message):
-        self.consumer.set_topic(channel, message)
+    def _apply_or_enqueue(self, fn_name, args, kwargs):
+        if self.consumer:
+            self._apply(fn_name, args, kwargs)
+        else:
+            self.queue.append((fn_name, args, kwargs))
 
-    @queueable
-    def restore_topic(self, channel):
-        self.consumer.restore_topic(channel)
-
+    def __getattr__(self, name):
+        def wrapper(*args, **kwargs):
+            self._apply_or_enqueue(name, args, kwargs)
+        return wrapper
