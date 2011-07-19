@@ -23,22 +23,25 @@ class HaroldConfiguration(object):
         parser.read(filenames)
 
         # read the basic IRC configuration
-        self.irc = _ConfigStub()
-        self.irc.host = parser.get(IRC_SECTION_NAME, "host")
-        self.irc.port = parser.getint(IRC_SECTION_NAME, "port")
-        self.irc.use_ssl = parser.getboolean(IRC_SECTION_NAME, "use_ssl")
-        self.irc.nick = parser.get(IRC_SECTION_NAME, "nick")
-        self.irc.password = parser.get(IRC_SECTION_NAME, "password")
+        if parser.has_section(IRC_SECTION_NAME):
+            self.irc = _ConfigStub()
+            self.irc.host = parser.get(IRC_SECTION_NAME, "host")
+            self.irc.port = parser.getint(IRC_SECTION_NAME, "port")
+            self.irc.use_ssl = parser.getboolean(IRC_SECTION_NAME, "use_ssl")
+            self.irc.nick = parser.get(IRC_SECTION_NAME, "nick")
+            self.irc.password = parser.get(IRC_SECTION_NAME, "password")
 
         # jabber configuration
-        self.jabber = _ConfigStub()
-        self.jabber.host = parser.get(JABBER_SECTION_NAME, "host")
-        self.jabber.port = parser.getint(JABBER_SECTION_NAME, "port")
-        self.jabber.id = parser.get(JABBER_SECTION_NAME, "id")
-        self.jabber.password = parser.get(JABBER_SECTION_NAME, "password")
-        recipients = parser.get(JABBER_SECTION_NAME, "recipients")
-        self.jabber.recipients = [x.strip() for x in
-                                  recipients.split(',') if x]
+        if parser.has_section(JABBER_SECTION_NAME):
+            self.jabber = _ConfigStub()
+            self.jabber.host = parser.get(JABBER_SECTION_NAME, "host")
+            self.jabber.port = parser.getint(JABBER_SECTION_NAME, "port")
+            self.jabber.id = parser.get(JABBER_SECTION_NAME, "id")
+            self.jabber.password = parser.get(JABBER_SECTION_NAME,
+                                              "password")
+            recipients = parser.get(JABBER_SECTION_NAME, "recipients")
+            self.jabber.recipients = [x.strip() for x in
+                                      recipients.split(',') if x]
 
         # read the basic HTTP configuration
         self.http = _ConfigStub()

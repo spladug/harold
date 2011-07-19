@@ -15,12 +15,14 @@ application = service.Application("Harold")
 http_root, harold_root = http.make_root(config)
 
 # set up the irc service
-irc_service = irc.make_service(config, harold_root)
-irc_service.setServiceParent(application)
+if hasattr(config, 'irc'):
+    irc_service = irc.make_service(config, harold_root)
+    irc_service.setServiceParent(application)
 
 # set up jabber
-jabber_service = jabber.make_service(config, harold_root)
-jabber_service.setServiceParent(application)
+if hasattr(config, 'jabber'):
+    jabber_service = jabber.make_service(config, harold_root)
+    jabber_service.setServiceParent(application)
 
 # set up the http service
 http_service = http.make_service(config, http_root)
