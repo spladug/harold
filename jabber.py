@@ -125,7 +125,8 @@ class JabberBot(xmlstream.XMPPHandler):
     @command
     def wall(self, sender, *message):
         "Broadcast a message to all other alert-recipients."
-        self.broadcast(' '.join(message))
+        short_name = sender.split('@')[0]
+        self.broadcast("<%s> %s" % (short_name, ' '.join(message)))
 
 
 def make_service(config, root):
