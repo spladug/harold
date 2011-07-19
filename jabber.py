@@ -1,5 +1,6 @@
 from cStringIO import StringIO
 from contextlib import contextmanager
+import inspect
 
 from twisted.words.xish import domish
 from twisted.words.protocols.jabber import xmlstream, client, jid
@@ -45,17 +46,17 @@ class JabberBot(xmlstream.XMPPHandler):
         sender = message["from"]
         body = str(message.body)
         split = body.split(' ')
-        command, args = split[0].lower(), split[1:]
+        command, args = split[0].lower(), filter(None, split[1:])
 
         if command not in COMMANDS:
-            self.sendMessage(sender, 'Unknown command. Try "help".')
+            self.sendMessage(sender, 'Unknown command, "%s", try "help".' % command)
             return
 
         try:
             fn = COMMANDS[command]
             fn(self, sender, *args)
         except:
-            self._detailed_help(sender, command=command, prefix="ERROR")
+            self._detailed_help(sender, command=command, prefix="Usage:")
 
     # methods
     def setAvailable(self):
@@ -76,7 +77,27 @@ class JabberBot(xmlstream.XMPPHandler):
         self.broadcast(message)
 
     def _detailed_help(self, sender, command, prefix=None):
-        pass
+        if command not in COMMANDS:
+            self.sendMessage(sender, "Unknown command '%s'" % command)
+            return
+
+        fn = COMMANDS[command]
+        args, varargs, keywords, defaults = inspect.getargspec(fn)
+        offset_of_first_default = -len(defaults) if defaults else None
+
+        with self.message(sender) as m:
+            if prefix:
+                print >>m, prefix
+            print >>m, command + " ",
+            for arg in args[2:offset_of_first_default]:
+                print >>m, arg + " ",
+            if defaults:
+                for arg in args[offset_of_first_default:]:
+                    print >>m, "[" + arg + "] ",
+            if varargs:
+                print >>m, " [" + varargs + "...]",
+            print >>m, ""
+            print >>m, fn.__doc__
 
     @contextmanager
     def message(self, to):
@@ -88,10 +109,6 @@ class JabberBot(xmlstream.XMPPHandler):
     @command
     def help(self, sender, command=None):
         "Get information on available commands."
-        if command and command not in COMMANDS:
-            self.sendMessage(sender, "Unknown command '%s'" % command)
-            return
-
         if command:
             # send detailed documentation on the specified command
             self._detailed_help(sender, command)
@@ -99,12 +116,13 @@ class JabberBot(xmlstream.XMPPHandler):
             # send an overview of available commands
             with self.message(sender) as m:
                 for command in COMMANDS.itervalues():
-                    print >>m, "*%s* %s" % (command.__name__, command.__doc__)
+                    print >>m, "*%s* %s" % (command.__name__,
+                                            command.__doc__.splitlines()[0])
 
     @command
-    def wall(self, sender, *rest):
+    def wall(self, sender, *message):
         "Broadcast a message to all other alert-recipients."
-        self.broadcast(' '.join(rest))
+        self.broadcast(' '.join(message))
 
 
 def make_service(config, root):
