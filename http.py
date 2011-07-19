@@ -2,7 +2,6 @@ from twisted.web import resource, server
 from twisted.application import internet
 
 
-
 class ProtectedResource(resource.Resource):
     def __init__(self, config):
         self.config = config

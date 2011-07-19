@@ -8,10 +8,12 @@ from twisted.application import internet
 
 from http import ProtectedResource
 
+
 COMMANDS = {}
 def command(fn):
     COMMANDS[fn.__name__] = fn
     return fn
+
 
 class BroadcastAlertListener(ProtectedResource):
     isLeaf = True
@@ -49,7 +51,8 @@ class JabberBot(xmlstream.XMPPHandler):
         command, args = split[0].lower(), filter(None, split[1:])
 
         if command not in COMMANDS:
-            self.sendMessage(sender, 'Unknown command, "%s", try "help".' % command)
+            self.sendMessage(sender, ('Unknown command, "%s", try "help".'
+                                      % command))
             return
 
         try:
