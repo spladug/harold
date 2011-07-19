@@ -115,9 +115,12 @@ class JabberBot(xmlstream.XMPPHandler):
         else:
             # send an overview of available commands
             with self.message(sender) as m:
+                print >>m, "Available commands:"
                 for command in COMMANDS.itervalues():
                     print >>m, "*%s* %s" % (command.__name__,
                                             command.__doc__.splitlines()[0])
+                print >>m, ('Try "help <command>" to see more details ' +
+                            'on a specific command')
 
     @command
     def wall(self, sender, *message):
