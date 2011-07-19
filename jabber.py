@@ -130,7 +130,6 @@ def make_service(config, root):
     id = jid.JID(config.jabber.id)
     factory = client.XMPPClientFactory(id, config.jabber.password)
     manager = xmlstream.StreamManager(factory)
-    manager.logTraffic = True
     bot = JabberBot(config)
     bot.setHandlerParent(manager)
 
