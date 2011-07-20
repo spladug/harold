@@ -4,6 +4,7 @@ from conf import HaroldConfiguration
 import irc
 import http
 import jabber
+import ident
 
 # read configuration
 config = HaroldConfiguration("harold.ini")
@@ -13,6 +14,11 @@ application = service.Application("Harold")
 
 # make the http root resource
 http_root, harold_root = http.make_root(config)
+
+# a really stupid ident service
+if hasattr(config, 'ident'):
+    ident_service = ident.make_service(config, harold_root)
+    ident_service.setServiceParent(application)
 
 # set up the irc service
 if hasattr(config, 'irc'):

@@ -1,6 +1,7 @@
 from ConfigParser import RawConfigParser, NoOptionError
 
 HAROLD_PREFIX = "harold"
+IDENT_SECTION_NAME = HAROLD_PREFIX + ":" + "ident"
 IRC_SECTION_NAME = HAROLD_PREFIX + ":" + "irc"
 JABBER_SECTION_NAME = HAROLD_PREFIX + ":" + "jabber"
 HTTP_SECTION_NAME = HAROLD_PREFIX + ":" + "http"
@@ -21,6 +22,12 @@ class HaroldConfiguration(object):
                        '%(repository)s: %(summary)s')
         })
         parser.read(filenames)
+
+        # ident
+        if parser.has_section(IDENT_SECTION_NAME):
+            self.ident = _ConfigStub()
+            self.ident.user = parser.get(IDENT_SECTION_NAME, "user")
+            self.ident.port = parser.getint(IDENT_SECTION_NAME, "port")
 
         # read the basic IRC configuration
         if parser.has_section(IRC_SECTION_NAME):
