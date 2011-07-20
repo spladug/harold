@@ -10,7 +10,18 @@ from http import ProtectedResource
 from postreceive import PostReceiveDispatcher
 
 
+def git_commit_id():
+    from subprocess import Popen, PIPE
+
+    try:
+        result = Popen(["git", "rev-parse", "HEAD"], stdout=PIPE)
+        return result.communicate()[0][:8]
+    except:
+        return ""
+
+
 class IRCBot(irc.IRCClient):
+    realname = "Harold (%s)" % git_commit_id()
     lineRate = 1  # rate limit to 1 message / second
 
     def signedOn(self):
