@@ -22,7 +22,7 @@ def git_commit_id():
 
 class IRCBot(irc.IRCClient):
     realname = "Harold (%s)" % git_commit_id()
-    lineRate = 1  # rate limit to 1 message / second
+    lineRate = .25  # rate limit to 4 messages / second
 
     def signedOn(self):
         self.topics = {}
