@@ -7,7 +7,16 @@ from twisted.web import resource
 
 from dispatcher import Dispatcher
 from http import ProtectedResource
-from postreceive import PostReceiveDispatcher
+from plugin import Plugin
+from conf import PluginConfig, Option, tup
+
+class IrcConfig(PluginConfig):
+    nick = Option(str)
+    password = Option(str, default=None)
+    host = Option(str)
+    port = Option(int, default=6667)
+    use_ssl = Option(bool, default=False)
+    channels = Option(tup, default=[])
 
 
 def git_commit_id():
@@ -28,7 +37,7 @@ class IRCBot(irc.IRCClient):
         self.topics = {}
         self.topic_i_just_set = None
 
-        for channel in self.factory.config.channels:
+        for channel in self.factory.channels:
             self.join(channel)
 
         self.factory.dispatcher.registerConsumer(self)
@@ -59,36 +68,25 @@ class IRCBot(irc.IRCClient):
 
 
 class IRCBotFactory(protocol.ClientFactory):
-    def __init__(self, config, dispatcher):
+    def __init__(self, config, dispatcher, channels):
         self.config = config
         self.dispatcher = dispatcher
+        self.channels = channels
 
         class _ConfiguredBot(IRCBot):
-            nickname = self.config.irc.nick
-            password = self.config.irc.password
+            nickname = self.config.nick
+            password = self.config.password
         self.protocol = _ConfiguredBot
 
     def clientConnectionLost(self, connector, reason):
         connector.connect()
 
 
-class _PostReceiveListener(ProtectedResource):
+class MessageListener(ProtectedResource):
     isLeaf = True
 
-    def __init__(self, config, dispatcher):
-        ProtectedResource.__init__(self, config)
-        self.dispatcher = PostReceiveDispatcher(config, dispatcher)
-
-    def _handle_request(self, request):
-        post_data = request.args['payload'][0]
-        self.dispatcher.dispatch(post_data)
-
-
-class _MessageListener(ProtectedResource):
-    isLeaf = True
-
-    def __init__(self, config, dispatcher):
-        ProtectedResource.__init__(self, config)
+    def __init__(self, http, dispatcher):
+        ProtectedResource.__init__(self, http)
         self.dispatcher = dispatcher
 
     def _handle_request(self, request):
@@ -97,11 +95,11 @@ class _MessageListener(ProtectedResource):
         self.dispatcher.send_message(channel, message)
 
 
-class _SetTopicListener(ProtectedResource):
+class SetTopicListener(ProtectedResource):
     isLeaf = True
 
-    def __init__(self, config, dispatcher):
-        ProtectedResource.__init__(self, config)
+    def __init__(self, http, dispatcher):
+        ProtectedResource.__init__(self, http)
         self.dispatcher = dispatcher
 
     def _handle_request(self, request):
@@ -110,11 +108,11 @@ class _SetTopicListener(ProtectedResource):
         self.dispatcher.set_topic(channel, new_topic)
 
 
-class _RestoreTopicListener(ProtectedResource):
+class RestoreTopicListener(ProtectedResource):
     isLeaf = True
 
-    def __init__(self, config, dispatcher):
-        ProtectedResource.__init__(self, config)
+    def __init__(self, http, dispatcher):
+        ProtectedResource.__init__(self, http)
         self.dispatcher = dispatcher
 
     def _handle_request(self, request):
@@ -122,27 +120,45 @@ class _RestoreTopicListener(ProtectedResource):
         self.dispatcher.restore_topic(channel)
 
 
-def make_service(config, root):
+class ChannelManager(object):
+    def __init__(self, basic_channels, bot):
+        self.bot = bot
+        self.channels = set(basic_channels)
+
+    def add(self, channel):
+        if channel not in self.channels:
+            self.channels.add(channel)
+            self.bot.join(channel)
+
+    def __iter__(self):
+        return self.channels.__iter__()
+
+
+def make_plugin(config, http):
+    irc_config = IrcConfig(config)
     dispatcher = Dispatcher()
+    channel_manager = ChannelManager(irc_config.channels, dispatcher)
 
     # add the http resources
-    root.putChild('post-receive', _PostReceiveListener(config, dispatcher))
-    root.putChild('message', _MessageListener(config, dispatcher))
-
+    http.root.putChild('message', MessageListener(http, dispatcher))
     topic_root = resource.Resource()
-    root.putChild('topic', topic_root)
-    topic_root.putChild('set', _SetTopicListener(config, dispatcher))
-    topic_root.putChild('restore', _RestoreTopicListener(config, dispatcher))
+    http.root.putChild('topic', topic_root)
+    topic_root.putChild('set', SetTopicListener(http, dispatcher))
+    topic_root.putChild('restore', RestoreTopicListener(http, dispatcher))
 
     # set up the IRC client
-    irc_factory = IRCBotFactory(config, dispatcher)
-    if config.irc.use_ssl:
+    irc_factory = IRCBotFactory(irc_config, dispatcher, channel_manager)
+    p = Plugin()
+    p.bot = dispatcher
+    p.channels = channel_manager
+    if irc_config:
         context_factory = ssl.ClientContextFactory()
-        return internet.SSLClient(config.irc.host,
-                                  config.irc.port,
-                                  irc_factory,
-                                  context_factory)
+        p.add_service(internet.SSLClient(irc_config.host,
+                                         irc_config.port,
+                                         irc_factory,
+                                         context_factory))
     else:
-        return internet.TCPClient(config.irc.host,
-                                  config.irc.port,
-                                  irc_factory)
+        p.add_service(internet.TCPClient(irc_config.host,
+                                         irc_config.port,
+                                         irc_factory))
+    return p

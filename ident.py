@@ -2,6 +2,13 @@ from twisted.protocols.basic import LineReceiver
 from twisted.application import internet
 from twisted.internet.protocol import Factory
 
+from plugin import Plugin
+from conf import PluginConfig, Option
+
+class IdentConfig(PluginConfig):
+    user = Option(str, default="harold")
+    port = Option(int, default=113)
+
 
 class IdentProtocol(LineReceiver):
     def lineReceived(self, request):
@@ -9,9 +16,14 @@ class IdentProtocol(LineReceiver):
         self.transport.loseConnection()
 
 
-def make_service(config, root):
+def make_plugin(config):
+    ident_config = IdentConfig(config)
+
+    p = Plugin()
     factory = Factory()
     factory.protocol = IdentProtocol
-    factory.user = config.ident.user
+    factory.user = ident_config.user
 
-    return internet.TCPServer(config.ident.port, factory)
+    p.add_service(internet.TCPServer(ident_config.port, factory))
+
+    return p

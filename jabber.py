@@ -6,7 +6,16 @@ from twisted.words.xish import domish
 from twisted.words.protocols.jabber import xmlstream, client, jid
 from twisted.application import internet
 
+from conf import PluginConfig, Option, tup
 from http import ProtectedResource
+from plugin import Plugin
+
+class JabberConfig(PluginConfig):
+    host = Option(str)
+    port = Option(int, default=5222)
+    id = Option(str)
+    password = Option(str)
+    recipients = Option(tup, default=[])
 
 
 COMMANDS = {}
@@ -18,8 +27,8 @@ def command(fn):
 class BroadcastAlertListener(ProtectedResource):
     isLeaf = True
 
-    def __init__(self, config, bot):
-        ProtectedResource.__init__(self, config)
+    def __init__(self, http, bot):
+        ProtectedResource.__init__(self, http)
         self.bot = bot
 
     def _handle_request(self, request):
@@ -30,7 +39,7 @@ class BroadcastAlertListener(ProtectedResource):
 
 class JabberBot(xmlstream.XMPPHandler):
     def __init__(self, config):
-        self.recipients = config.jabber.recipients
+        self.recipients = config.recipients
         super(JabberBot, self).__init__()
 
     # event handlers
@@ -132,17 +141,24 @@ class JabberBot(xmlstream.XMPPHandler):
         self.broadcast("<%s> %s" % (short_name, ' '.join(message)))
 
 
-def make_service(config, root):
+def make_plugin(config, http):
+    p = Plugin()
+    jabber_config = JabberConfig(config)
+
     # set up the jabber bot
-    id = jid.JID(config.jabber.id)
-    factory = client.XMPPClientFactory(id, config.jabber.password)
+    id = jid.JID(jabber_config.id)
+    factory = client.XMPPClientFactory(id, jabber_config.password)
     manager = xmlstream.StreamManager(factory)
-    bot = JabberBot(config)
+    bot = JabberBot(jabber_config)
     bot.setHandlerParent(manager)
 
-    # create the http resource
-    root.putChild("alert", BroadcastAlertListener(config, bot))
+    p.add_service(internet.TCPClient(jabber_config.host,
+                                     jabber_config.port,
+                                     factory))
 
-    return internet.TCPClient(config.jabber.host,
-                              config.jabber.port,
-                              factory)
+
+    # create the http resource
+    http.root.putChild("alert", BroadcastAlertListener(http, bot))
+
+    return p
+
