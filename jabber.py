@@ -6,8 +6,7 @@ from twisted.words.xish import domish
 from twisted.words.protocols.jabber import xmlstream, client, jid
 from twisted.application import internet
 
-from conf import PluginConfig, Option, tup
-from http import ProtectedResource
+from conf import PluginConfig, Option
 from plugin import Plugin
 
 class JabberConfig(PluginConfig):
@@ -15,31 +14,60 @@ class JabberConfig(PluginConfig):
     port = Option(int, default=5222)
     id = Option(str)
     password = Option(str)
-    recipients = Option(tup, default=[])
 
 
-COMMANDS = {}
-def command(fn):
-    COMMANDS[fn.__name__] = fn
-    return fn
+class JabberPlugin(Plugin):
+    def __init__(self):
+        self.commands = {}
+        super(JabberPlugin, self).__init__()
+
+    def register_command(self, handler):
+        self.commands[handler.__name__] = handler
 
 
-class BroadcastAlertListener(ProtectedResource):
-    isLeaf = True
+def _detailed_help(bot, sender, command, prefix=None):
+    if command not in bot.plugin.commands:
+        bot.sendMessage(sender, "Unknown command '%s'" % command)
+        return
 
-    def __init__(self, http, bot):
-        ProtectedResource.__init__(self, http)
-        self.bot = bot
+    fn = bot.plugin.commands[command]
+    args, varargs, keywords, defaults = inspect.getargspec(fn)
+    offset_of_first_default = -len(defaults) if defaults else None
 
-    def _handle_request(self, request):
-        tag = request.args['tag'][0]
-        message = request.args['message'][0]
-        self.bot.processAlert(tag, message)
+    with bot.message(sender) as m:
+        if prefix:
+            print >>m, prefix
+        print >>m, command + " ",
+        for arg in args[2:offset_of_first_default]:
+            print >>m, arg + " ",
+        if defaults:
+            for arg in args[offset_of_first_default:]:
+                print >>m, "[" + arg + "] ",
+        if varargs:
+            print >>m, " [" + varargs + "...]",
+        print >>m, ""
+        print >>m, fn.__doc__
+
+
+def help(bot, sender, command=None):
+    "Get information on available commands."
+    if command:
+        # send detailed documentation on the specified command
+        _detailed_help(bot, sender, command)
+    else:
+        # send an overview of available commands
+        with bot.message(sender) as m:
+            print >>m, "Available commands:"
+            for command in bot.plugin.commands.itervalues():
+                print >>m, "*%s* - %s" % (command.__name__,
+                                          command.__doc__.splitlines()[0])
+            print >>m, ('Try "help <command>" to see more details ' +
+                        'on a specific command')
 
 
 class JabberBot(xmlstream.XMPPHandler):
-    def __init__(self, config):
-        self.recipients = config.recipients
+    def __init__(self, plugin):
+        self.plugin = plugin
         super(JabberBot, self).__init__()
 
     # event handlers
@@ -59,18 +87,18 @@ class JabberBot(xmlstream.XMPPHandler):
         split = body.split(' ')
         command, args = split[0].lower(), filter(None, split[1:])
 
-        if command not in COMMANDS:
+        if command not in self.plugin.commands:
             self.sendMessage(sender, ('Unknown command, "%s", try "help".'
                                       % command))
             return
 
         try:
-            fn = COMMANDS[command]
+            fn = self.plugin.commands[command]
             fn(self, sender, *args)
         except:
-            self._detailed_help(sender, command=command, prefix="Usage:")
+            _detailed_help(self, sender, command=command, prefix="Usage:")
 
-    # methods
+    # api
     def setAvailable(self):
         presence = domish.Element((None, 'presence'))
         self.send(presence)
@@ -81,84 +109,31 @@ class JabberBot(xmlstream.XMPPHandler):
         message.addElement('body', content=content)
         self.send(message)
 
-    def broadcast(self, content):
-        for recipient in self.recipients:
-            self.sendMessage(recipient, content)
-
-    def processAlert(self, tag, message):
-        self.broadcast(message)
-
-    def _detailed_help(self, sender, command, prefix=None):
-        if command not in COMMANDS:
-            self.sendMessage(sender, "Unknown command '%s'" % command)
-            return
-
-        fn = COMMANDS[command]
-        args, varargs, keywords, defaults = inspect.getargspec(fn)
-        offset_of_first_default = -len(defaults) if defaults else None
-
-        with self.message(sender) as m:
-            if prefix:
-                print >>m, prefix
-            print >>m, command + " ",
-            for arg in args[2:offset_of_first_default]:
-                print >>m, arg + " ",
-            if defaults:
-                for arg in args[offset_of_first_default:]:
-                    print >>m, "[" + arg + "] ",
-            if varargs:
-                print >>m, " [" + varargs + "...]",
-            print >>m, ""
-            print >>m, fn.__doc__
-
     @contextmanager
     def message(self, to):
         io = StringIO()
         yield io
         self.sendMessage(to, io.getvalue())
 
-    # im commands
-    @command
-    def help(self, sender, command=None):
-        "Get information on available commands."
-        if command:
-            # send detailed documentation on the specified command
-            self._detailed_help(sender, command)
-        else:
-            # send an overview of available commands
-            with self.message(sender) as m:
-                print >>m, "Available commands:"
-                for command in COMMANDS.itervalues():
-                    print >>m, "*%s* - %s" % (command.__name__,
-                                              command.__doc__.splitlines()[0])
-                print >>m, ('Try "help <command>" to see more details ' +
-                            'on a specific command')
 
-    @command
-    def wall(self, sender, *message):
-        "Broadcast a message to all other alert-recipients."
-        short_name = sender.split('@')[0]
-        self.broadcast("<%s> %s" % (short_name, ' '.join(message)))
-
-
-def make_plugin(config, http):
-    p = Plugin()
+def make_plugin(config):
+    p = JabberPlugin()
     jabber_config = JabberConfig(config)
 
     # set up the jabber bot
     id = jid.JID(jabber_config.id)
     factory = client.XMPPClientFactory(id, jabber_config.password)
     manager = xmlstream.StreamManager(factory)
-    bot = JabberBot(jabber_config)
+    bot = JabberBot(p)
     bot.setHandlerParent(manager)
+    p.bot = bot
 
     p.add_service(internet.TCPClient(jabber_config.host,
                                      jabber_config.port,
                                      factory))
 
-
-    # create the http resource
-    http.root.putChild("alert", BroadcastAlertListener(http, bot))
+    # add the built-in commands
+    p.register_command(help)
 
     return p
 
