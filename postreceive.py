@@ -25,6 +25,16 @@ class RepositoryConfig(PluginConfig):
     format = Option(str, '%(author)s committed %(commit_id)s (%(url)s) to ' +
                          '%(repository)s: %(summary)s')
     branches = Option(tup, [])
+    max_commit_count = Option(int, default=3)
+    bundled_format = Option(str, '%(authors)s made %(commit_count)d commits ' +
+                                 '(%(commit_range)s - %(url)s) to ' +
+                                 '%(repository)s')
+
+def _get_commit_author(commit):
+    "Return the author's github account or, if not present, full name."
+    author_info = commit['author']
+    return author_info.get('username', author_info['name'])
+
 
 class PostReceiveDispatcher(object):
     def __init__(self, config, bot):
@@ -33,7 +43,6 @@ class PostReceiveDispatcher(object):
         self.shortener = UrlShortener()
 
     def _dispatch_commit(self, repository, branch, commit):
-        author = commit['author']
         d = self.shortener.make_short_url(commit['url'])
 
         def onUrlShortened(short_url):
@@ -44,8 +53,32 @@ class PostReceiveDispatcher(object):
 
                 'commit_id': commit['id'][:7],
                 'url': short_url,
-                'author': author.get('username', author['name']),
+                'author': _get_commit_author(commit),
                 'summary': commit['message'].splitlines()[0]
+            })
+        d.addCallback(onUrlShortened)
+
+    def _dispatch_bundle(self, info, repository, branch, commits):
+        authors = set()
+        for commit in commits:
+            authors.add(_get_commit_author(commit))
+        before = info['before']
+        after = info['after']
+        commit_range = before[:7] + '..' + after[:7]
+        url = "http://github.com/%s/compare/%s...%s" % (repository.name,
+                                                        before,
+                                                        after)
+
+        d = self.shortener.make_short_url(url)
+        def onUrlShortened(short_url):
+            self.bot.send_message(repository.channel,
+                                  repository.bundled_format % {
+                'repository': repository.name,
+                'branch': branch,
+                'authors': ', '.join(authors),
+                'commit_count': len(commits),
+                'commit_range': commit_range,
+                'url': short_url,
             })
         d.addCallback(onUrlShortened)
 
@@ -55,10 +88,14 @@ class PostReceiveDispatcher(object):
                            parsed['repository']['name'])
         repository = self.config.repositories_by_name[repository_name]
         branch = parsed['ref'].split('/')[-1]
+        commits = parsed['commits']
 
         if not repository.branches or branch in repository.branches:
-            for commit in parsed['commits']:
-                self._dispatch_commit(repository, branch, commit)
+            if len(commits) <= repository.max_commit_count:
+                for commit in commits:
+                    self._dispatch_commit(repository, branch, commit)
+            else:
+                self._dispatch_bundle(parsed, repository, branch, commits)
 
 
 class PostReceiveListener(ProtectedResource):
