@@ -54,7 +54,7 @@ class IRCBot(irc.IRCClient):
         if not msg.startswith(self.nickname):
             return
 
-        self.me(channel, "is a bot written by spladug.")
+        self.me(channel, "is a bot. http://github.com/spladug/harold")
 
     def send_message(self, channel, message):
         self.msg(channel, message.encode('utf-8'))
