@@ -7,6 +7,7 @@ from conf import PluginConfig, Option, tup
 class AlertsConfig(PluginConfig):
     recipients = Option(tup, default=[])
     refractory_period = Option(int, default=300)
+    max_mute_duration = Option(int, default=3600)
 
 
 class BroadcastAlertListener(ProtectedResource):
@@ -27,7 +28,7 @@ class Alerter(object):
         self.config = config
         self.bot = bot
         self.alerts = {}
-        self.mutes = set()
+        self.mutes = {}
 
     def broadcast(self, message):
         for recipient in self.config.recipients:
@@ -46,8 +47,16 @@ class Alerter(object):
 
     def _deregister_alert(self, tag):
         if tag in self.mutes:
-            self.mutes.remove(tag)
+            self.mutes[tag].cancel()
+            self._deregister_mute(tag)
         del self.alerts[tag]
+
+    def _register_mute(self, tag):
+        self.mutes[tag] = reactor.callLater(self.config.max_mute_duration,
+                                            self._deregister_mute, tag)
+
+    def _deregister_mute(self, tag):
+        del self.mutes[tag]
 
     def broadcast_from(self, sender, message):
         short_name = sender.split('@')[0]
@@ -69,7 +78,7 @@ class Alerter(object):
                                          % tag)
         elif tag in self.alerts:
             self.broadcast_from(sender, "acknowledged %s" % tag)
-            self.mutes.add(tag)
+            self._register_mute(tag)
         else:
             self.bot.sendMessage(sender,
                                  "No live alerts with tag \"%s\"." % tag)
