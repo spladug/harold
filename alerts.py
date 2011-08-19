@@ -50,6 +50,7 @@ class Alerter(object):
             self.mutes[tag].cancel()
             self._deregister_mute(tag)
         del self.alerts[tag]
+        self.broadcast("OK: <%s>" % tag)
 
     def _register_mute(self, tag):
         self.mutes[tag] = reactor.callLater(self.config.max_mute_duration,
