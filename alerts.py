@@ -35,7 +35,7 @@ class Alerter(object):
 
     def alert(self, tag, message):
         if tag not in self.mutes:
-            self.broadcast(tag + ": " + message)
+            self.broadcast("<%s> %s" % (tag, message))
         self._register_alert(tag)
 
     def _register_alert(self, tag):
