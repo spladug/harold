@@ -38,7 +38,7 @@ def _detailed_help(bot, sender, command, prefix=None):
         if prefix:
             print >>m, prefix
         print >>m, command + " ",
-        for arg in args[2:offset_of_first_default]:
+        for arg in args[3:offset_of_first_default]:
             print >>m, arg + " ",
         if defaults:
             for arg in args[offset_of_first_default:]:
