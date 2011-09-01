@@ -6,6 +6,30 @@ from http import ProtectedResource
 from conf import PluginConfig, Option, tup
 
 
+def pretty_time_span(delta):
+    seconds = int(delta.total_seconds())
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+
+    if hours == 1:
+        return "1 hour"
+    elif hours > 1:
+        return "%d hours" % hours
+    elif minutes == 1:
+        return "1 minute"
+    elif minutes > 1:
+        return "%d minutes" % minutes
+    elif seconds == 1:
+        return "1 second"
+    else:
+        return "%d seconds" % seconds
+
+
+def make_short_name(jid):
+    short_name = jid.split('@')[0]
+    return short_name
+
+
 class AlertsConfig(PluginConfig):
     recipients = Option(tup, default=[])
     refractory_period = Option(int, default=300)
@@ -72,11 +96,10 @@ class Alerter(object):
         if alert.muted:
             alert.mute_expirator.cancel()
         del self.alerts[tag]
-        self.broadcast("OK: <%s>" % tag)
 
-    def _register_mute(self, tag):
+    def _register_mute(self, tag, sender):
         alert = self.alerts[tag]
-        alert.muted = True
+        alert.muted = make_short_name(sender)
         alert.mute_expirator = reactor.callLater(
             self.config.max_mute_duration,
             self._deregister_mute,
@@ -88,7 +111,7 @@ class Alerter(object):
         alert.muted = False
 
     def broadcast_from(self, sender, message):
-        short_name = sender.split('@')[0]
+        short_name = make_short_name(sender)
         self.broadcast("<%s> %s" % (short_name, message))
 
     def wall(self, bot, sender, *message):
@@ -111,7 +134,26 @@ class Alerter(object):
                                          % tag)
         else:
             self.broadcast_from(sender, "acknowledged %s" % tag)
-            self._register_mute(tag)
+            self._register_mute(tag, sender)
+
+    def status(self, bot, sender):
+        "Show status of all live alerts."
+
+        if not self.alerts:
+            bot.sendMessage(sender, "No live alerts. :)")
+            return
+
+        now = datetime.datetime.now()
+        with bot.message(sender) as m:
+            print >>m, "Live alerts:"
+            for tag, alert in self.alerts.iteritems():
+                print >>m, "<%s>%s seen %dx. started %s ago. last seen %s ago." % (
+                    tag,
+                    " ack'd by %s." % alert.muted if alert.muted else "",
+                    alert.count,
+                    pretty_time_span(now - alert.first_seen),
+                    pretty_time_span(now - alert.last_seen),
+                )
 
 
 def make_plugin(config, http, jabber):
@@ -124,3 +166,4 @@ def make_plugin(config, http, jabber):
     # add commands
     jabber.register_command(alerter.wall)
     jabber.register_command(alerter.ack)
+    jabber.register_command(alerter.status)
