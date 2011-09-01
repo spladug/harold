@@ -1,3 +1,5 @@
+import datetime
+
 from twisted.internet import reactor
 
 from http import ProtectedResource
@@ -23,41 +25,67 @@ class BroadcastAlertListener(ProtectedResource):
         self.alerter.alert(tag, message)
 
 
+class Alert(object):
+    pass
+
+
 class Alerter(object):
     def __init__(self, config, bot):
         self.config = config
         self.bot = bot
         self.alerts = {}
-        self.mutes = {}
 
     def broadcast(self, message):
         for recipient in self.config.recipients:
             self.bot.sendMessage(recipient, message)
 
     def alert(self, tag, message):
-        if tag not in self.mutes:
+        alert = self._register_alert(tag)
+        if not alert.muted:
             self.broadcast("<%s> %s" % (tag, message))
-        self._register_alert(tag)
 
     def _register_alert(self, tag):
-        if tag in self.alerts:
-            self.alerts[tag].cancel()
-        self.alerts[tag] = reactor.callLater(self.config.refractory_period,
-                                             self._deregister_alert, tag)
+        alert = self.alerts.get(tag)
+
+        if not alert:
+            alert = Alert()
+            alert.first_seen = datetime.datetime.now()
+            alert.count = 0
+            alert.muted = False
+            alert.expirator = None
+            self.alerts[tag] = alert
+
+        if alert.expirator:
+            alert.expirator.cancel()
+
+        alert.count += 1
+        alert.last_seen = datetime.datetime.now()
+        alert.expirator = reactor.callLater(
+            self.config.refractory_period,
+            self._deregister_alert,
+            tag
+        )
+        return alert
 
     def _deregister_alert(self, tag):
-        if tag in self.mutes:
-            self.mutes[tag].cancel()
-            self._deregister_mute(tag)
+        alert = self.alerts[tag]
+        if alert.muted:
+            alert.mute_expirator.cancel()
         del self.alerts[tag]
         self.broadcast("OK: <%s>" % tag)
 
     def _register_mute(self, tag):
-        self.mutes[tag] = reactor.callLater(self.config.max_mute_duration,
-                                            self._deregister_mute, tag)
+        alert = self.alerts[tag]
+        alert.muted = True
+        alert.mute_expirator = reactor.callLater(
+            self.config.max_mute_duration,
+            self._deregister_mute,
+            tag
+        )
 
     def _deregister_mute(self, tag):
-        del self.mutes[tag]
+        alert = self.alerts[tag]
+        alert.muted = False
 
     def broadcast_from(self, sender, message):
         short_name = sender.split('@')[0]
@@ -74,15 +102,16 @@ class Alerter(object):
         this alert until a period of time (default of 5 minutes)
         passes with no occurence of alerts with this tag.
         """
-        if tag in self.mutes:
-            self.bot.sendMessage(sender, "\"%s\" is already acknowledged."
-                                         % tag)
-        elif tag in self.alerts:
-            self.broadcast_from(sender, "acknowledged %s" % tag)
-            self._register_mute(tag)
-        else:
+        alert = self.alerts.get(tag)
+        if not alert:
             self.bot.sendMessage(sender,
                                  "No live alerts with tag \"%s\"." % tag)
+        elif alert.muted:
+            self.bot.sendMessage(sender, "\"%s\" is already acknowledged."
+                                         % tag)
+        else:
+            self.broadcast_from(sender, "acknowledged %s" % tag)
+            self._register_mute(tag)
 
 
 def make_plugin(config, http, jabber):
