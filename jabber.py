@@ -105,6 +105,7 @@ class JabberBot(xmlstream.XMPPHandler):
 
     def sendMessage(self, to, content):
         message = domish.Element((None, 'message'))
+        message['type'] = 'chat'
         message['to'] = to
         message.addElement('body', content=content)
         self.send(message)
