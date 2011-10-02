@@ -173,6 +173,26 @@ The jabber ID to connect as. Should look like an email address.
 
 Password for the jabber account.
 
+## smtp
+
+The SMTP plugin provides an interface for other plugins to send emails.
+
+### host
+
+The host to relay messages through.
+
+### port
+
+The port to connect to the SMTP server on.
+
+### use\_ssl
+
+Whether or not to use SSL in the initial connection to the SMTP server.
+
+### username / password
+
+Credentials to authenticate with.
+
 ## alerts
 
 This plugin provides a Jabber-based alerting system. Monitoring scripts can ping harold
@@ -235,6 +255,13 @@ A cron-schedule of when the event fires.
     port = 5222
     id = alertbot@reddit.com
     password = supersecret3
+
+    [harold:plugin:smtp]
+    host = smtp.gmail.com
+    use_ssl = true
+    port = 465
+    username = redditalertbot@gmail.com
+    password = whatever
 
     [harold:plugin:alerts]
     recipients = a@reddit.com, b@reddit.com
