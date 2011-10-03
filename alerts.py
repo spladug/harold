@@ -1,4 +1,6 @@
 import datetime
+import functools
+from email.mime.text import MIMEText
 
 from twisted.internet import reactor
 
@@ -54,14 +56,37 @@ class Alert(object):
 
 
 class Alerter(object):
-    def __init__(self, config, bot):
+    def __init__(self, config, jabber_bot, smtp):
         self.config = config
-        self.bot = bot
         self.alerts = {}
 
-    def broadcast(self, message):
+        self.jabber_bot = jabber_bot
+        self.smtp = smtp
+
+        senders = {
+            'smtp': self._send_smtp,
+            'jabber': self._send_jabber,
+        }
+        self.recipients = []
         for recipient in self.config.recipients:
-            self.bot.sendMessage(recipient, message)
+            medium, id = recipient.split(':', 1)
+            sender = functools.partial(senders[medium], id)
+            self.recipients.append(sender)
+
+    def _send_smtp(self, recipient, message):
+        email = MIMEText(message)
+        self.smtp.sendmail(
+            self.smtp.username,
+            [recipient],
+            email
+        )
+
+    def _send_jabber(self, recipient, message):
+        self.jabber_bot.sendMessage(recipient, message)
+
+    def broadcast(self, message):
+        for recipient in self.recipients:
+            recipient(message)
 
     def alert(self, tag, message):
         alert = self._register_alert(tag)
@@ -127,11 +152,11 @@ class Alerter(object):
         """
         alert = self.alerts.get(tag)
         if not alert:
-            self.bot.sendMessage(sender,
-                                 "No live alerts with tag \"%s\"." % tag)
+            bot.sendMessage(sender,
+                            "No live alerts with tag \"%s\"." % tag)
         elif alert.muted:
-            self.bot.sendMessage(sender, "\"%s\" is already acknowledged."
-                                         % tag)
+            bot.sendMessage(sender, "\"%s\" is already acknowledged."
+                            % tag)
         else:
             self.broadcast_from(sender, "acknowledged %s" % tag)
             self._register_mute(tag, sender)
@@ -156,9 +181,9 @@ class Alerter(object):
                 )
 
 
-def make_plugin(config, http, jabber):
+def make_plugin(config, http, jabber, smtp):
     alerts_config = AlertsConfig(config)
-    alerter = Alerter(alerts_config, jabber.bot)
+    alerter = Alerter(alerts_config, jabber.bot, smtp)
 
     # create the http resource
     http.root.putChild("alert", BroadcastAlertListener(http, alerter))

@@ -202,7 +202,9 @@ status, and communicate among other alert recipients.
 
 ### recipients
 
-A comma-delimited list of jabber usernames to broadcast alerts to.
+A comma-delimited list of recipients for alert-related broadcasts. Each recipient should be
+prefixed with the protocol on which to send the alert. This can be either `jabber` or `smtp`,
+followed by a `:` followed by the recipient's jabber ID or email address.
 
 ### refractory\_period
 
@@ -264,7 +266,7 @@ A cron-schedule of when the event fires.
     password = whatever
 
     [harold:plugin:alerts]
-    recipients = a@reddit.com, b@reddit.com
+    recipients = jabber:a@reddit.com, smtp:b@reddit.com
 
     [harold:plugin:postreceive]
     [harold:repository:reddit/reddit]
