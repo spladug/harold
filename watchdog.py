@@ -1,10 +1,6 @@
 from twisted.internet import reactor
-from twisted.web import resource
 
 from http import ProtectedResource
-
-
-HEARTBEAT_GRACE_PERIOD = 5 # seconds
 
 
 class WatchdogResource(ProtectedResource):
@@ -44,13 +40,14 @@ class Watchdog(object):
 
         service = self.services[tag]
         service.failure_count = 0
+        service.interval = interval
         service.clear_expiration()
         self._schedule_expiration(tag)
 
     def _schedule_expiration(self, tag):
         service = self.services[tag]
         service.expirator = reactor.callLater(
-            service.interval + HEARTBEAT_GRACE_PERIOD,
+            service.interval,
             self._heartbeat_missed,
             tag
         )
