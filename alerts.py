@@ -6,6 +6,7 @@ from twisted.internet import reactor
 
 from http import ProtectedResource
 from conf import PluginConfig, Option, tup
+import watchdog
 
 
 def pretty_time_span(delta):
@@ -192,3 +193,6 @@ def make_plugin(config, http, jabber, smtp):
     jabber.register_command(alerter.wall)
     jabber.register_command(alerter.ack)
     jabber.register_command(alerter.status)
+
+    # create the watchdog
+    watchdog.initialize(http, alerter)
