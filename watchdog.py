@@ -64,15 +64,22 @@ class Watchdog(object):
         self.alerter.alert(tag, "missed heartbeat %d times" % service.failure_count)
         self._schedule_expiration(tag)
 
-    def unregister(self, tag):
+    def forget(self, bot, sender, tag):
+        "Forget the specified service and stop expecting heartbeats from it."
+
         if tag not in self.services:
+            bot.sendMessage(sender, "I'm not watching %s" % tag)
             return
 
         self.services[tag].clear_expiration()
         del self.services[tag]
 
+        bot.sendMessage(sender, "Nobody liked %s anyway." % tag)
 
-def initialize(http, alerter):
+
+def initialize(http, jabber, alerter):
     watchdog = Watchdog(alerter)
 
     http.root.putChild("heartbeat", HeartbeatListener(http, watchdog))
+
+    jabber.register_command(watchdog.forget)

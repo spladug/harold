@@ -195,4 +195,4 @@ def make_plugin(config, http, jabber, smtp):
     jabber.register_command(alerter.status)
 
     # create the watchdog
-    watchdog.initialize(http, alerter)
+    watchdog.initialize(http, jabber, alerter)
