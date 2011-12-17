@@ -1,6 +1,9 @@
+import datetime
+
 from twisted.internet import reactor
 
 from http import ProtectedResource
+from utils import pretty_time_span
 
 
 class WatchdogResource(ProtectedResource):
@@ -22,6 +25,8 @@ class WatchedService(object):
     def __init__(self, interval):
         self.interval = interval
         self.expirator = None
+        self.last_seen = None
+        self.failure_count = 0
 
     def clear_expiration(self):
         if self.expirator:
@@ -42,6 +47,7 @@ class Watchdog(object):
         service.failure_count = 0
         service.interval = interval
         service.clear_expiration()
+        service.last_seen = datetime.datetime.now()
         self._schedule_expiration(tag)
 
     def _schedule_expiration(self, tag):
@@ -60,6 +66,24 @@ class Watchdog(object):
         service.failure_count += 1
         self.alerter.alert(tag, "missed heartbeat %d times" % service.failure_count)
         self._schedule_expiration(tag)
+
+    def watches(self, bot, sender):
+        "Check the status of all registered services."
+
+        if not self.services:
+            bot.sendMessage(sender, "Not watching any services.")
+            return
+
+        now = datetime.datetime.now()
+        with bot.message(sender) as m:
+            print >>m, "Monitored services:"
+
+            for tag, service in self.services.iteritems():
+                print >>m, "<%s> %s. last seen %s ago." % (
+                    tag,
+                    "MISSING for %d heartbeats" % service.failure_count if service.failure_count else "HEALTHY",
+                    pretty_time_span(now - service.last_seen)
+                )
 
     def forget(self, bot, sender, tag):
         "Forget the specified service and stop expecting heartbeats from it."
@@ -80,3 +104,4 @@ def initialize(http, jabber, alerter):
     http.root.putChild("heartbeat", HeartbeatListener(http, watchdog))
 
     jabber.register_command(watchdog.forget)
+    jabber.register_command(watchdog.watches)
