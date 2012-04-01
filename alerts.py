@@ -134,15 +134,32 @@ class Alerter(object):
         passes with no occurence of alerts with this tag.
         """
         alert = self.alerts.get(tag)
+
         if not alert:
-            bot.sendMessage(sender,
-                            "No live alerts with tag \"%s\"." % tag)
-        elif alert.muted:
-            bot.sendMessage(sender, "\"%s\" is already acknowledged."
-                            % tag)
-        else:
+            matching_tags = [alert_tag
+                             for alert_tag in self.alerts.iterkeys()
+                             if alert_tag.startswith(tag)]
+
+            if len(matching_tags) == 1:
+                tag = matching_tags[0]
+                alert = self.alerts.get(tag)
+            elif not matching_tags:
+                bot.sendMessage(sender,
+                                "No live alerts with tag \"%s\"." % tag)
+                return
+            else:
+                bot.sendMessage(sender,
+                                "Ambiguous tag. Prefix matches: " +
+                                ", ".join('"%s"' % s for s in matching_tags) +
+                                ". Please be more specific.")
+                return
+
+        if not alert.muted:
             self.broadcast_from(sender, "acknowledged %s" % tag)
             self._register_mute(tag, sender)
+        else:
+            bot.sendMessage(sender, "\"%s\" is already acknowledged."
+                            % tag)
 
     def status(self, bot, sender):
         "Show status of all live alerts."
