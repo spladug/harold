@@ -1,6 +1,7 @@
 from cStringIO import StringIO
 from contextlib import contextmanager
 import inspect
+import traceback
 
 from twisted.words.xish import domish
 from twisted.words.protocols.jabber import xmlstream, client, jid
@@ -100,6 +101,7 @@ class JabberBot(xmlstream.XMPPHandler):
             fn = self.plugin.commands[command]
             fn(self, sender, *args)
         except:
+            traceback.print_exc()
             _detailed_help(self, sender, command=command, prefix="Usage:")
 
     # api
