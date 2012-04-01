@@ -14,6 +14,9 @@ def make_short_name(jid):
     short_name = jid.split('@')[0]
     return short_name
 
+def strip_resource_id(jid):
+    return jid.partition("/")[0]
+
 
 class AlertsConfig(PluginConfig):
     recipients = Option(tup, default=[])
@@ -38,10 +41,15 @@ class Alert(object):
     pass
 
 
+class Quiet(object):
+    pass
+
+
 class Alerter(object):
     def __init__(self, config, jabber_bot, smtp):
         self.config = config
         self.alerts = {}
+        self.quiets = {}
 
         self.jabber_bot = jabber_bot
         self.smtp = smtp
@@ -65,7 +73,8 @@ class Alerter(object):
         )
 
     def _send_jabber(self, recipient, message):
-        self.jabber_bot.sendMessage(recipient, message)
+        if recipient not in self.quiets:
+            self.jabber_bot.sendMessage(recipient, message)
 
     def broadcast(self, message):
         for recipient in self.recipients:
@@ -180,6 +189,53 @@ class Alerter(object):
                     pretty_time_span(now - alert.last_seen),
                 )
 
+    def _register_quiet(self, sender, duration):
+        quiet = Quiet()
+        quiet.user = make_short_name(sender)
+        quiet.expirator = reactor.callLater(
+            duration,
+            self._deregister_quiet,
+            sender
+        )
+        quiet.expiration = (datetime.datetime.now() +
+                            datetime.timedelta(seconds=duration))
+        self.quiets[sender] = quiet
+
+    def _deregister_quiet(self, sender):
+        if sender in self.quiets:
+            del self.quiets[sender]
+
+    def stfu(self, bot, sender, hours):
+        "Mute all alerts for a specified period of time."
+
+        hours = int(hours)
+        self._register_quiet(strip_resource_id(sender), hours * 3600)
+        bot.sendMessage(sender, 
+                        "You will not receive any broadcasts for %d hours. "
+                        'Say "back" to cancel and start receiving messages'
+                        "again." % hours)
+
+    def back(self, bot, sender):
+        "Unmute alerts."
+
+        sender = strip_resource_id(sender)
+        if sender in self.quiets:
+            self._deregister_quiet(sender)
+            bot.sendMessage(sender, "Welcome back.")
+        else:
+            bot.sendMessage(sender, "You were here all along.")
+
+    def who(self, bot, sender):
+        "Get a list of people marked unavailable"
+
+        if not self.quiets:
+            bot.sendMessage(sender, "Everyone's listening!")
+        else:
+            with bot.message(sender) as m:
+                print >> m, "The following users are unavailable:"
+                for quiet in self.quiets.itervalues():
+                    print >> m, "<%s> until %s" % (quiet.user,
+                                           quiet.expiration.strftime("%H:%M"))
 
 def make_plugin(config, http, jabber, smtp):
     alerts_config = AlertsConfig(config)
@@ -192,6 +248,9 @@ def make_plugin(config, http, jabber, smtp):
     jabber.register_command(alerter.wall)
     jabber.register_command(alerter.ack)
     jabber.register_command(alerter.status)
+    jabber.register_command(alerter.stfu)
+    jabber.register_command(alerter.back)
+    jabber.register_command(alerter.who)
 
     # create the watchdog
     watchdog.initialize(http, jabber, alerter)
