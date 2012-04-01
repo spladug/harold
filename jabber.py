@@ -73,7 +73,11 @@ class JabberBot(xmlstream.XMPPHandler):
     # event handlers
     def connectionInitialized(self):
         self.xmlstream.addObserver("/message", self.onMessage)
+        self.xmlstream.addObserver("/error", self.onError)
         self.setAvailable()
+
+    def onError(self, error):
+        print "Got an error: ", error.toXml()
 
     def onMessage(self, message):
         if message["type"] != "chat":
