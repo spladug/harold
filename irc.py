@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+import traceback
+
 from twisted.words.protocols import irc
 from twisted.internet import protocol, ssl
 from twisted.application import internet
@@ -9,6 +11,7 @@ from dispatcher import Dispatcher
 from http import ProtectedResource
 from plugin import Plugin
 from conf import PluginConfig, Option, tup
+
 
 class IrcConfig(PluginConfig):
     nick = Option(str)
@@ -28,9 +31,21 @@ def git_commit_id():
     except:
         return ""
 
+REVISION = git_commit_id()
+
+
+def version(irc, sender, channel):
+    nick = sender.partition('!')[0]
+    irc.send_message(channel, "%s, i am running git revision %s" % (nick,
+                                                                    REVISION))
+
+
+def who(irc, sender, channel):
+    irc.me(channel, "is a bot. see http://github.com/spladug/harold")
+
 
 class IRCBot(irc.IRCClient):
-    realname = "Harold (%s)" % git_commit_id()
+    realname = "Harold (%s)" % REVISION
     lineRate = .25  # rate limit to 4 messages / second
 
     def signedOn(self):
@@ -51,10 +66,26 @@ class IRCBot(irc.IRCClient):
         self.factory.dispatcher.deregisterConsumer(self)
 
     def privmsg(self, user, channel, msg):
-        if not msg.startswith(self.nickname):
+        split = msg.split()
+
+        if len(split) < 2:
             return
 
-        self.me(channel, "is a bot. http://github.com/spladug/harold")
+        highlight, command, args = split[0].lower(), split[1].lower(), split[2:]
+
+        if not highlight.startswith(self.nickname):
+            return
+
+        fn = self.plugin.commands.get(command)
+        if not fn:
+            self.me(channel, "is just a simple bot. he has no idea what you mean!")
+            return
+
+        try:
+            fn(self, user, channel, *args)
+        except:
+            traceback.print_exc()
+            self.me(channel, "just had a hiccup.")
 
     def send_message(self, channel, message):
         self.msg(channel, message.encode('utf-8'))
@@ -68,7 +99,8 @@ class IRCBot(irc.IRCClient):
 
 
 class IRCBotFactory(protocol.ClientFactory):
-    def __init__(self, config, dispatcher, channels):
+    def __init__(self, plugin, config, dispatcher, channels):
+        self.plugin = plugin
         self.config = config
         self.dispatcher = dispatcher
         self.channels = channels
@@ -76,6 +108,7 @@ class IRCBotFactory(protocol.ClientFactory):
         class _ConfiguredBot(IRCBot):
             nickname = self.config.nick
             password = self.config.password
+            plugin = self.plugin
         self.protocol = _ConfiguredBot
 
     def clientConnectionLost(self, connector, reason):
@@ -134,6 +167,15 @@ class ChannelManager(object):
         return self.channels.__iter__()
 
 
+class IrcPlugin(Plugin):
+    def __init__(self):
+        self.commands = {}
+        super(IrcPlugin, self).__init__()
+
+    def register_command(self, handler):
+        self.commands[handler.__name__] = handler
+
+
 def make_plugin(config, http):
     irc_config = IrcConfig(config)
     dispatcher = Dispatcher()
@@ -146,9 +188,13 @@ def make_plugin(config, http):
     topic_root.putChild('set', SetTopicListener(http, dispatcher))
     topic_root.putChild('restore', RestoreTopicListener(http, dispatcher))
 
+    # configure the default irc commands
+    p = IrcPlugin()
+    p.register_command(version)
+    p.register_command(who)
+
     # set up the IRC client
-    irc_factory = IRCBotFactory(irc_config, dispatcher, channel_manager)
-    p = Plugin()
+    irc_factory = IRCBotFactory(p, irc_config, dispatcher, channel_manager)
     p.bot = dispatcher
     p.channels = channel_manager
     if irc_config:
