@@ -11,6 +11,7 @@ from dispatcher import Dispatcher
 from http import ProtectedResource
 from plugin import Plugin
 from conf import PluginConfig, Option, tup
+from utils import Event
 
 
 class IrcConfig(PluginConfig):
@@ -60,6 +61,7 @@ class IRCBot(irc.IRCClient):
     def topicUpdated(self, user, channel, topic):
         if topic != self.topic_i_just_set:
             self.topics[channel] = topic
+        self.factory.plugin.topicUpdated(user, channel, topic)
 
     def connectionLost(self, reason):
         irc.IRCClient.connectionLost(self)
@@ -170,6 +172,7 @@ class ChannelManager(object):
 class IrcPlugin(Plugin):
     def __init__(self):
         self.commands = {}
+        self.topicUpdated = Event()
         super(IrcPlugin, self).__init__()
 
     def register_command(self, handler):
@@ -195,6 +198,7 @@ def make_plugin(config, http):
 
     # set up the IRC client
     irc_factory = IRCBotFactory(p, irc_config, dispatcher, channel_manager)
+    p.config = irc_config
     p.bot = dispatcher
     p.channels = channel_manager
     if irc_config:
