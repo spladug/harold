@@ -191,7 +191,7 @@ class DeployMonitor(object):
         self.irc.bot.send_message(
             self.config.channel,
             """%s's push "%s" complete. """
-            "Took %s" % (who, id, pretty_and_accurate_time_span(duration))
+            "Took %s." % (who, id, pretty_and_accurate_time_span(duration))
         )
         self._update_topic()
 
