@@ -170,7 +170,7 @@ class DeployMonitor(object):
             return
 
         # don't care about "100%" since it'll be quickly followed by "complete"
-        if deploy.quadrant == 3:
+        if deploy.quadrant > 3:
             return
 
         percent = float(index) / deploy.host_count
