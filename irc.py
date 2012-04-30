@@ -41,7 +41,7 @@ def version(irc, sender, channel):
                                                                     REVISION))
 
 
-def who(irc, sender, channel):
+def who(irc, sender, channel, *args):
     irc.me(channel, "is a bot. see http://github.com/spladug/harold")
 
 
