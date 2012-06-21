@@ -126,7 +126,7 @@ class MessageListener(ProtectedResource):
 
     def _handle_request(self, request):
         channel = request.args['channel'][0]
-        message = request.args['message'][0]
+        message = unicode(request.args['message'][0], 'utf-8')
         self.dispatcher.send_message(channel, message)
 
 
@@ -139,7 +139,7 @@ class SetTopicListener(ProtectedResource):
 
     def _handle_request(self, request):
         channel = request.args['channel'][0]
-        new_topic = request.args['topic'][0]
+        new_topic = unicode(request.args['topic'][0], 'utf-8')
         self.dispatcher.set_topic(channel, new_topic)
 
 
