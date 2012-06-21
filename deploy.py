@@ -24,10 +24,10 @@ class DeployBeganListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
-        id = request.args['id'][0]
+        id = unicode(request.args['id'][0], 'utf-8')
         who = request.args['who'][0]
         args = request.args['args'][0]
-        log_path = request.args['log_path'][0]
+        log_path = unicode(request.args['log_path'][0], 'utf-8')
         count = int(request.args['count'][0])
         self.monitor.onPushBegan(id, who, args, log_path, count)
 
@@ -36,7 +36,7 @@ class DeployEndedListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
-        id = request.args['id'][0]
+        id = unicode(request.args['id'][0], 'utf-8')
         self.monitor.onPushEnded(id)
 
 
@@ -44,7 +44,7 @@ class DeployAbortedListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
-        id = request.args['id'][0]
+        id = unicode(request.args['id'][0], 'utf-8')
         reason = request.args['reason'][0]
         self.monitor.onPushAborted(id, reason)
 
@@ -53,7 +53,7 @@ class DeployProgressListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
-        id = request.args['id'][0]
+        id = unicode(request.args['id'][0], 'utf-8')
         host = request.args['host'][0]
         index = float(request.args['index'][0])
         self.monitor.onPushProgress(id, host, index)
