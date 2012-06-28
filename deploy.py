@@ -40,6 +40,15 @@ class DeployEndedListener(DeployListener):
         self.monitor.onPushEnded(id)
 
 
+class DeployErrorListener(DeployListener):
+    isLeaf = True
+
+    def _handle_request(self, request):
+        id = unicode(request.args['id'][0], 'utf-8')
+        error = request.args['error'][0]
+        self.monitor.onPushError(id, error)
+
+
 class DeployAbortedListener(DeployListener):
     isLeaf = True
 
@@ -194,6 +203,16 @@ class DeployMonitor(object):
             "Took %s." % (who, id, pretty_and_accurate_time_span(duration))
         )
         self._update_topic()
+
+    def onPushError(self, id, error):
+        deploy = self.deploys.get(id)
+        if not deploy:
+            return
+
+        deploy.expirator.delay(self.config.deploy_ttl)
+        self.irc.bot.send_message(self.config.channel,
+                                  """%s's push "%s" encountered an error: %s""" %
+                                  (deploy.who, id, error))
 
     def onPushAborted(self, id, reason):
         who, duration = self._remove_deploy(id)
