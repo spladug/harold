@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+import string
+import random
 import traceback
 
 from twisted.words.protocols import irc
@@ -21,6 +23,7 @@ class IrcConfig(PluginConfig):
     port = Option(int, default=6667)
     use_ssl = Option(bool, default=False)
     channels = Option(tup, default=[])
+    parrot_channel = Option(str, default=None)
 
 
 def git_commit_id():
@@ -43,6 +46,15 @@ def version(irc, sender, channel):
 
 def who(irc, sender, channel, *args):
     irc.me(channel, "is a bot. see http://github.com/spladug/harold")
+
+
+def wanna(irc, sender, channel, *args):
+    if args:
+        clean = args[0].translate(string.maketrans("",""), string.punctuation)
+        if clean.lower() == "cracker":
+            irc.me(channel, "squawks: yes!")
+        else:
+            irc.me(channel, "flies away in disgust")
 
 
 class IRCBot(irc.IRCClient):
@@ -76,6 +88,12 @@ class IRCBot(irc.IRCClient):
         highlight, command, args = split[0].lower(), split[1].lower(), split[2:]
 
         if not highlight.startswith(self.nickname):
+            fate = random.random()
+            if channel == self.parrot_channel and fate < .05:
+                parrotized = ' '.join(msg.split(' ')[-2:]) + ". squawk!"
+                self.msg(self.parrot_channel, parrotized)
+            elif fate < .01:
+                self.msg(self.parrot_channel, "HERMOCRATES! A friend of Socrates! Bwaaak!")
             return
 
         fn = self.plugin.commands.get(command)
@@ -111,6 +129,7 @@ class IRCBotFactory(protocol.ClientFactory):
             nickname = self.config.nick
             password = self.config.password
             plugin = self.plugin
+            parrot_channel = self.config.parrot_channel
         self.protocol = _ConfiguredBot
 
     def clientConnectionLost(self, connector, reason):
@@ -195,6 +214,7 @@ def make_plugin(config, http):
     p = IrcPlugin()
     p.register_command(version)
     p.register_command(who)
+    p.register_command(wanna)
 
     # set up the IRC client
     irc_factory = IRCBotFactory(p, irc_config, dispatcher, channel_manager)
