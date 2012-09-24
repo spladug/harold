@@ -92,7 +92,7 @@ class IRCBot(irc.IRCClient):
             if channel == self.parrot_channel and fate < .01:
                 parrotized = ' '.join(msg.split(' ')[-2:]) + ". squawk!"
                 self.msg(self.parrot_channel, parrotized)
-            elif fate < .005:
+            elif channel == self.parrot_channel and fate < .005:
                 self.msg(self.parrot_channel, "HERMOCRATES! A friend of Socrates! Bwaaak!")
             return
 
