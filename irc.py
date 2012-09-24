@@ -89,10 +89,10 @@ class IRCBot(irc.IRCClient):
 
         if not highlight.startswith(self.nickname):
             fate = random.random()
-            if channel == self.parrot_channel and fate < .01:
+            if channel == self.parrot_channel and fate < .005:
                 parrotized = ' '.join(msg.split(' ')[-2:]) + ". squawk!"
                 self.msg(self.parrot_channel, parrotized)
-            elif channel == self.parrot_channel and fate < .005:
+            elif channel == self.parrot_channel and fate < .0025:
                 self.msg(self.parrot_channel, "HERMOCRATES! A friend of Socrates! Bwaaak!")
             return
 
