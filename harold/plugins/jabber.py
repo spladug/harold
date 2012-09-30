@@ -10,6 +10,7 @@ from twisted.application import internet
 from harold.conf import PluginConfig, Option
 from harold.plugin import Plugin
 
+
 class JabberConfig(PluginConfig):
     host = Option(str)
     port = Option(int, default=5222)
@@ -143,4 +144,3 @@ def make_plugin(config):
     p.register_command(help)
 
     return p
-

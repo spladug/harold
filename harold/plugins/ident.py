@@ -5,6 +5,7 @@ from twisted.internet.protocol import Factory
 from harold.plugin import Plugin
 from harold.conf import PluginConfig, Option
 
+
 class IdentConfig(PluginConfig):
     user = Option(str, default="harold")
     port = Option(int, default=113)

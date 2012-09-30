@@ -2,6 +2,7 @@ import importlib
 import copy
 import inspect
 
+
 class Plugin(object):
     def __init__(self):
         self.services = []
@@ -27,7 +28,7 @@ def _topological_sort(dependencies):
     dependencies = copy.deepcopy(dependencies)
 
     startup_order = []
-    satisfied_plugins = ['config'] # config is a known-safe starting point
+    satisfied_plugins = ['config']  # config is a known-safe starting point
     while satisfied_plugins:
         satisfied = satisfied_plugins.pop()
         startup_order.append(satisfied)
@@ -62,5 +63,5 @@ def load_plugins(config):
         if p:
             initialized_plugins[plugin] = p
 
-    return (ip for name, ip in initialized_plugins.iteritems() 
+    return (ip for name, ip in initialized_plugins.iteritems()
             if name != 'config')

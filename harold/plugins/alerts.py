@@ -14,6 +14,7 @@ def make_short_name(jid):
     short_name = jid.split('@')[0]
     return short_name
 
+
 def strip_resource_id(jid):
     return jid.partition("/")[0]
 
@@ -181,7 +182,8 @@ class Alerter(object):
         with bot.message(sender) as m:
             print >>m, "Live alerts:"
             for tag, alert in self.alerts.iteritems():
-                print >>m, "<%s>%s seen %dx. started %s ago. last seen %s ago." % (
+                print >>m, ("<%s>%s seen %dx. started %s ago. "
+                            "last seen %s ago.") % (
                     tag,
                     " ack'd by %s." % alert.muted if alert.muted else "",
                     alert.count,
@@ -210,7 +212,7 @@ class Alerter(object):
 
         hours = int(hours)
         self._register_quiet(strip_resource_id(sender), hours * 3600)
-        bot.sendMessage(sender, 
+        bot.sendMessage(sender,
                         "You will not receive any broadcasts for %d hours. "
                         'Say "back" to cancel and start receiving messages'
                         "again." % hours)
@@ -236,6 +238,7 @@ class Alerter(object):
                 for quiet in self.quiets.itervalues():
                     print >> m, "<%s> until %s" % (quiet.user,
                                            quiet.expiration.strftime("%H:%M"))
+
 
 def make_plugin(config, http, jabber, smtp):
     alerts_config = AlertsConfig(config)

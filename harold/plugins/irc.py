@@ -50,7 +50,7 @@ def who(irc, sender, channel, *args):
 
 def wanna(irc, sender, channel, *args):
     if args:
-        clean = args[0].translate(string.maketrans("",""), string.punctuation)
+        clean = args[0].translate(string.maketrans("", ""), string.punctuation)
         if clean.lower() == "cracker":
             irc.me(channel, "squawks: yes!")
         else:
@@ -85,7 +85,9 @@ class IRCBot(irc.IRCClient):
         if len(split) < 2:
             return
 
-        highlight, command, args = split[0].lower(), split[1].lower(), split[2:]
+        highlight, command, args = (split[0].lower(),
+                                    split[1].lower(),
+                                    split[2:])
 
         if not highlight.startswith(self.nickname):
             fate = random.random()
@@ -93,12 +95,14 @@ class IRCBot(irc.IRCClient):
                 parrotized = ' '.join(msg.split(' ')[-2:]) + ". squawk!"
                 self.msg(self.parrot_channel, parrotized)
             elif channel == self.parrot_channel and fate < .0025:
-                self.msg(self.parrot_channel, "HERMOCRATES! A friend of Socrates! Bwaaak!")
+                self.msg(self.parrot_channel,
+                         "HERMOCRATES! A friend of Socrates! Bwaaak!")
             return
 
         fn = self.plugin.commands.get(command)
         if not fn:
-            self.me(channel, "is just a simple bot. he has no idea what you mean!")
+            self.me(channel, "is just a simple bot. he has no "
+                             "idea what you mean!")
             return
 
         try:

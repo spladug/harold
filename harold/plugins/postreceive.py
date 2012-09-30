@@ -6,6 +6,7 @@ from harold.conf import PluginConfig, Option, tup
 
 REPOSITORY_PREFIX = 'harold:repository:'
 
+
 class PostReceiveConfig(object):
     def __init__(self, config, channels):
         self.repositories_by_name = {}
@@ -29,6 +30,7 @@ class RepositoryConfig(PluginConfig):
     bundled_format = Option(str, '%(authors)s made %(commit_count)d commits ' +
                                  '(%(commit_range)s - %(url)s) to ' +
                                  '%(repository)s')
+
 
 def _get_commit_author(commit):
     "Return the author's github account or, if not present, full name."
@@ -70,6 +72,7 @@ class PostReceiveDispatcher(object):
                                                         after)
 
         d = self.shortener.make_short_url(url)
+
         def onUrlShortened(short_url):
             self.bot.send_message(repository.channel,
                                   repository.bundled_format % {

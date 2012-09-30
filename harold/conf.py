@@ -4,6 +4,7 @@ plugin_prefix = "harold:plugin:"
 
 NoDefault = object()
 
+
 class HaroldConfiguration(object):
     def __init__(self, filenames):
         self.parser = RawConfigParser()
@@ -16,13 +17,16 @@ class HaroldConfiguration(object):
 
             yield section[len(plugin_prefix):]
 
+
 class Option(object):
     def __init__(self, convert, default=NoDefault):
         self.convert = convert
         self.default = default
 
+
 def tup(option):
     return [x.strip() for x in option.split(',') if x]
+
 
 class PluginConfig(object):
     def __init__(self, config, section=None):

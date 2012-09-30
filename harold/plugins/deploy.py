@@ -126,7 +126,7 @@ class DeployMonitor(object):
                      "%s with args: %s" %
                      (nick, deploy.who, deploy.when.strftime("%H:%M"),
                                             deploy.args))
-        else: # > 1
+        else:  # > 1
             earliest = min(d.when for d in self.deploys.itervalues())
             topic = ('<%s> %d pushes running (earliest '
                      'started at %s). check "status".' %
@@ -211,7 +211,8 @@ class DeployMonitor(object):
 
         deploy.expirator.delay(self.config.deploy_ttl)
         self.irc.bot.send_message(self.config.channel,
-                                  """%s's push "%s" encountered an error: %s""" %
+                                  ("""%s's push "%s" encountered """
+                                   "an error: %s") %
                                   (deploy.who, id, error))
 
     def onPushAborted(self, id, reason):

@@ -4,9 +4,11 @@ from twisted.application import internet
 from harold.plugin import Plugin
 from harold.conf import PluginConfig, Option
 
+
 class HttpConfig(PluginConfig):
     port = Option(int, default=80)
     secret = Option(str)
+
 
 class ProtectedResource(resource.Resource):
     def __init__(self, http):
