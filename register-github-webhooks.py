@@ -67,7 +67,12 @@ for repo in repositories:
     # determine if we're already configured / destroy non-conforming hooks
     found_valid_hook = False
     for hook in hooks:
-        if (hook["config"].get("url") != webhook_url or
+        # ensure this is a webhook and it was meant for harold
+        old_url = hook["config"].get("url", "")
+        if "harold" not in old_url:
+            continue
+
+        if (old_url != webhook_url or
             hook["events"] != DESIRED_EVENTS or
             found_valid_hook):
             print "  Deleting non-conforming hook %d" % hook["id"]
