@@ -4,9 +4,9 @@ import functools
 from twisted.web import resource
 from twisted.internet import reactor
 
-from http import ProtectedResource
-from conf import PluginConfig, Option
-from utils import pretty_and_accurate_time_span
+from harold.plugins.http import ProtectedResource
+from harold.conf import PluginConfig, Option
+from harold.utils import pretty_and_accurate_time_span
 
 
 class DeployConfig(PluginConfig):

@@ -9,11 +9,11 @@ from twisted.internet import protocol, ssl
 from twisted.application import internet
 from twisted.web import resource
 
-from dispatcher import Dispatcher
-from http import ProtectedResource
-from plugin import Plugin
-from conf import PluginConfig, Option, tup
-from utils import Event
+from harold.dispatcher import Dispatcher
+from harold.plugins.http import ProtectedResource
+from harold.plugin import Plugin
+from harold.conf import PluginConfig, Option, tup
+from harold.utils import Event
 
 
 class IrcConfig(PluginConfig):

@@ -1,7 +1,7 @@
 from twisted.application import service
 
-from conf import HaroldConfiguration
-import plugin
+from harold.conf import HaroldConfiguration
+from harold import plugin
 
 # read configuration
 config = HaroldConfiguration("harold.ini")

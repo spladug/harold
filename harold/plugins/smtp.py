@@ -4,8 +4,8 @@ from twisted.internet import reactor, ssl
 from twisted.internet.defer import Deferred
 from twisted.mail import smtp
 
-from plugin import Plugin
-from conf import PluginConfig, Option
+from harold.plugin import Plugin
+from harold.conf import PluginConfig, Option
 
 
 class SmtpConfig(PluginConfig):

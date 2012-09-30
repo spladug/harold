@@ -1,8 +1,8 @@
 import json
 
-from http import ProtectedResource
-from shorturl import UrlShortener
-from conf import PluginConfig, Option, tup
+from harold.plugins.http import ProtectedResource
+from harold.shorturl import UrlShortener
+from harold.conf import PluginConfig, Option, tup
 
 REPOSITORY_PREFIX = 'harold:repository:'
 

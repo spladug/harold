@@ -4,10 +4,10 @@ from email.mime.text import MIMEText
 
 from twisted.internet import reactor
 
-from http import ProtectedResource
-from conf import PluginConfig, Option, tup
-from utils import pretty_time_span
-import watchdog
+from harold.plugins.http import ProtectedResource
+from harold.conf import PluginConfig, Option, tup
+from harold.utils import pretty_time_span
+from harold.plugins import watchdog
 
 
 def make_short_name(jid):

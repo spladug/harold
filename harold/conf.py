@@ -27,7 +27,8 @@ def tup(option):
 class PluginConfig(object):
     def __init__(self, config, section=None):
         if not section:
-            section = plugin_prefix + self.__module__
+            plugin_name = self.__module__[len("harold.plugins."):]
+            section = plugin_prefix + plugin_name
 
         for name, contents in vars(type(self)).iteritems():
             if not isinstance(contents, Option):

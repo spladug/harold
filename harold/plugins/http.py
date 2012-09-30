@@ -1,8 +1,8 @@
 from twisted.web import resource, server
 from twisted.application import internet
 
-from plugin import Plugin
-from conf import PluginConfig, Option
+from harold.plugin import Plugin
+from harold.conf import PluginConfig, Option
 
 class HttpConfig(PluginConfig):
     port = Option(int, default=80)

@@ -7,8 +7,8 @@ from twisted.words.xish import domish
 from twisted.words.protocols.jabber import xmlstream, client, jid
 from twisted.application import internet
 
-from conf import PluginConfig, Option
-from plugin import Plugin
+from harold.conf import PluginConfig, Option
+from harold.plugin import Plugin
 
 class JabberConfig(PluginConfig):
     host = Option(str)

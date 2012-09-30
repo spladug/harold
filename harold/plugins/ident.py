@@ -2,8 +2,8 @@ from twisted.protocols.basic import LineReceiver
 from twisted.application import internet
 from twisted.internet.protocol import Factory
 
-from plugin import Plugin
-from conf import PluginConfig, Option
+from harold.plugin import Plugin
+from harold.conf import PluginConfig, Option
 
 class IdentConfig(PluginConfig):
     user = Option(str, default="harold")

@@ -3,7 +3,7 @@ import croniter
 
 from twisted.internet import reactor
 
-from conf import PluginConfig, Option
+from harold.conf import PluginConfig, Option
 
 ALARM_PREFIX = 'harold:alarm:'
 

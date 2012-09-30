@@ -1,8 +1,6 @@
-import imp
+import importlib
 import copy
 import inspect
-
-PLUGIN_DIRECTORY = '.'
 
 class Plugin(object):
     def __init__(self):
@@ -16,8 +14,7 @@ def _import_plugin_modules(config):
     plugins = {}
     dependencies = {}
     for plugin_name in config.plugin_names():
-        file, pathname, description = imp.find_module(plugin_name, ['.'])
-        plugin = imp.load_module(plugin_name, file, pathname, description)
+        plugin = importlib.import_module("harold.plugins." + plugin_name)
         plugins[plugin_name] = plugin
 
         args, varargs, kw, defaults = inspect.getargspec(plugin.make_plugin)

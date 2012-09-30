@@ -2,8 +2,8 @@ import datetime
 
 from twisted.internet import reactor
 
-from http import ProtectedResource
-from utils import pretty_time_span
+from harold.plugins.http import ProtectedResource
+from harold.utils import pretty_time_span
 
 
 class WatchdogResource(ProtectedResource):
