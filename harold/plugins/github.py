@@ -67,9 +67,9 @@ class PushDispatcher(object):
         before = info['before']
         after = info['after']
         commit_range = before[:7] + '..' + after[:7]
-        url = "http://github.com/%s/compare/%s...%s" % (repository.name,
-                                                        before,
-                                                        after)
+        url = "https://github.com/%s/compare/%s...%s" % (repository.name,
+                                                         before,
+                                                         after)
 
         d = self.shortener.make_short_url(url)
 
