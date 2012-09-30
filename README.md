@@ -66,21 +66,20 @@ Server password to use when connecting to IRC.
 A comma-delimited list of channels to join automatically. Additional channels
 may be added by other plugins.
 
-## postreceive
+## github
 
-The postreceive plugin implements an endpoint for GitHub-style post-receive
-notifications. It depends on the IRC plugin and will notify users via IRC
-when code is pushed to repositories under its purview. The plugin itself does
-not have any configuration (though the section header must exist in the config
-file for it to be activated.) Instead, each repository that will send
-notifications should have its own section of the format
-`[harold:repository:owner/repository]`.
+The github plugin implements an endpoint for GitHub webhook notifications. It
+depends on the IRC plugin and will notify users via IRC when code is pushed to
+repositories under its purview. The plugin itself does not have any
+configuration (though the section header must exist in the config file for it
+to be activated.) Instead, each repository that will send notifications should
+have its own section of the format `[harold:repository:owner/repository]`.
 
-## postreceive repository configuration
+## github repository configuration
 
 ### channel
 
-IRC channel to send commit notifications to.
+IRC channel to send notifications to.
 
 ### branches
 
@@ -131,11 +130,9 @@ Defaults to
 
 ### Configuring GitHub for postreceive
 
-Follow the [GitHub post-receive hooks
-instructions](http://help.github.com/post-receive-hooks/) and set the
-post-receive URL to the following:
-
-    http://HOST/harold/post-receive/SECRET
+Use the register-github-webhooks.py script in this directory. Set the webhook
+host to a publicly accessible name for the harold HTTP server, e.g.
+123.45.67.89:8888.
 
 ## ident
 

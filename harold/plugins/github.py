@@ -7,7 +7,7 @@ from harold.conf import PluginConfig, Option, tup
 REPOSITORY_PREFIX = 'harold:repository:'
 
 
-class PostReceiveConfig(object):
+class GitHubConfig(object):
     def __init__(self, config, channels):
         self.repositories_by_name = {}
 
@@ -38,11 +38,11 @@ def _get_commit_author(commit):
     return author_info.get('username', author_info['name'])
 
 
-class PostReceiveDispatcher(object):
-    def __init__(self, config, bot):
+class PushDispatcher(object):
+    def __init__(self, config, bot, shortener):
         self.config = config
         self.bot = bot
-        self.shortener = UrlShortener()
+        self.shortener = shortener
 
     def _dispatch_commit(self, repository, branch, commit):
         d = self.shortener.make_short_url(commit['url'])
@@ -85,8 +85,7 @@ class PostReceiveDispatcher(object):
             })
         d.addCallback(onUrlShortened)
 
-    def dispatch(self, payload):
-        parsed = json.loads(payload)
+    def dispatch(self, parsed):
         repository_name = (parsed['repository']['owner']['name'] + '/' +
                            parsed['repository']['name'])
         repository = self.config.repositories_by_name[repository_name]
@@ -101,20 +100,57 @@ class PostReceiveDispatcher(object):
                 self._dispatch_bundle(parsed, repository, branch, commits)
 
 
-class PostReceiveListener(ProtectedResource):
+class PullRequestDispatcher(object):
+    def __init__(self, config, bot, shortener):
+        self.config = config
+        self.bot = bot
+        self.shortener = shortener
+
+    def dispatch(self, parsed):
+        action = parsed["action"]
+        if action != "opened":
+            return
+
+        repository_name = parsed["repository"]["full_name"]
+        repository = self.config.repositories_by_name[repository_name]
+
+        html_link = parsed["pull_request"]["_links"]["html"]["href"]
+        d = self.shortener.make_short_url(html_link)
+        def onUrlShortened(short_url):
+            message = ("%(user)s opened pull request #%(id)d (%(short_url)s) "
+                       "on %(repo)s: %(title)s")
+            self.bot.send_message(repository.channel, message % dict(
+                user=parsed["sender"]["login"],
+                id=parsed["number"],
+                short_url=short_url,
+                repo=repository_name,
+                title=parsed["pull_request"]["title"][:72],
+            ))
+        d.addCallback(onUrlShortened)
+
+
+class GitHubListener(ProtectedResource):
     isLeaf = True
 
     def __init__(self, config, http, bot):
         ProtectedResource.__init__(self, http)
-        self.dispatcher = PostReceiveDispatcher(config, bot)
+        shortener = UrlShortener()
+        self.dispatchers = {
+            "push": PushDispatcher(config, bot, shortener),
+            "pull_request": PullRequestDispatcher(config, bot, shortener),
+        }
 
     def _handle_request(self, request):
-        post_data = request.args['payload'][0]
-        self.dispatcher.dispatch(post_data)
+        event = request.requestHeaders.getRawHeaders("X-Github-Event")[-1]
+        dispatcher = self.dispatchers.get(event)
+
+        if dispatcher:
+            post_data = request.args['payload'][0]
+            parsed = json.loads(post_data)
+            dispatcher.dispatch(parsed)
 
 
 def make_plugin(config, http, irc):
-    pr_config = PostReceiveConfig(config, irc.channels)
+    gh_config = GitHubConfig(config, irc.channels)
 
-    http.root.putChild('post-receive',
-                       PostReceiveListener(pr_config, http, irc.bot))
+    http.root.putChild('github', GitHubListener(gh_config, http, irc.bot))
