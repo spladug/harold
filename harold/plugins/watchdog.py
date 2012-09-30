@@ -82,9 +82,8 @@ class Watchdog(object):
             for tag, service in self.services.iteritems():
                 print >>m, "<%s> %s. last seen %s ago." % (
                     tag,
-                    "MISSING for %d heartbeats" % (service.failure_count
-                                                   if service.failure_count
-                                                   else "HEALTHY"),
+                    ("MISSING for %d heartbeats" % service.failure_count
+                     if service.failure_count else "HEALTHY"),
                     pretty_time_span(now - service.last_seen)
                 )
 
