@@ -89,7 +89,7 @@ class JabberBot(xmlstream.XMPPHandler):
             return
 
         sender = message["from"]
-        body = str(message.body)
+        body = unicode(message.body, 'utf-8')
         split = body.split(' ')
         command, args = split[0].lower(), filter(None, split[1:])
 
