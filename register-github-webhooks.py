@@ -55,7 +55,7 @@ webhook_url = urlparse.urlunsplit((
     None
 ))
 
-DESIRED_EVENTS = ["push", "pull_request"]
+DESIRED_EVENTS = ["push", "pull_request", "issue_comment"]
 for repo in repositories:
     print repo
 
