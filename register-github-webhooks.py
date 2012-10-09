@@ -93,10 +93,7 @@ for repo in repositories:
             config=dict(
                 url=webhook_url,
             ),
-            events=[
-                "push",
-                "pull_request",
-            ],
+            events=DESIRED_EVENTS,
             active=True,
         )),
     )
