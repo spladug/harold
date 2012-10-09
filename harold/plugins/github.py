@@ -103,7 +103,7 @@ class PushDispatcher(object):
 class Salon(object):
     messages_by_emoji = {
         ":fish:": "%(owner)s, %(user)s just ><))>'d your pull request "
-                  "%(repo)s#%(id)s (%(short_url)s).",
+                  "%(repo)s#%(id)s (%(short_url)s)",
         ":nail_care:": "%(owner)s, %(user)s is awaiting your response to "
                        "review of pull request %(repo)s#%(id)s "
                        "(%(short_url)s)",
