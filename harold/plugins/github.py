@@ -100,13 +100,23 @@ class PushDispatcher(object):
                 self._dispatch_bundle(parsed, repository, branch, commits)
 
 
-class PullRequestDispatcher(object):
+class Salon(object):
+    messages_by_emoji = {
+        ":fish:": ("%(user)s marked %(owner)s's pull request %(repo)s#%(id)s "
+                   "(%(short_url)s) ready to merge."),
+        ":nail_care:": ("%(owner)s, %(user)s is awaiting your response to "
+                        "review of pull request %(repo)s#%(id)s "
+                        "(%(short_url)s)"),
+        ":haircut:": ("%(owner)s is ready for further review of pull request "
+                      "%(repo)s#%(id)s (%(short_url)s)"),
+    }
+
     def __init__(self, config, bot, shortener):
         self.config = config
         self.bot = bot
         self.shortener = shortener
 
-    def dispatch(self, parsed):
+    def dispatch_pullrequest(self, parsed):
         action = parsed["action"]
         if action != "opened":
             return
@@ -128,6 +138,32 @@ class PullRequestDispatcher(object):
             ))
         d.addCallback(onUrlShortened)
 
+    def dispatch_comment(self, parsed):
+        action = parsed["action"]
+        if action != "created":
+            return
+
+        body = parsed["comment"]["body"]
+        for emoji, message in self.messages_by_emoji.iteritems():
+            if emoji in body:
+                self._announce_emoji(message, parsed)
+                break
+
+    def _announce_emoji(self, message, parsed):
+        repository_name = parsed["repository"]["full_name"]
+        repository = self.config.repositories_by_name[repository_name]
+        html_link = parsed["issue"]["pull_request"]["html_url"]
+        d = self.shortener.make_short_url(html_link)
+        def onUrlShortened(short_url):
+            self.bot.send_message(repository.channel, message % dict(
+                user=parsed["sender"]["login"],
+                owner=parsed["issue"]["user"]["login"],
+                id=parsed["number"],
+                short_url=short_url,
+                repo=repository_name,
+            ))
+        d.addCallback(onUrlShortened)
+
 
 class GitHubListener(ProtectedResource):
     isLeaf = True
@@ -135,9 +171,14 @@ class GitHubListener(ProtectedResource):
     def __init__(self, config, http, bot):
         ProtectedResource.__init__(self, http)
         shortener = UrlShortener()
+
+        push_dispatcher = PushDispatcher(config, bot, shortener)
+        salon = Salon(config, bot, shortener)
+
         self.dispatchers = {
-            "push": PushDispatcher(config, bot, shortener),
-            "pull_request": PullRequestDispatcher(config, bot, shortener),
+            "push": push_dispatcher.dispatch,
+            "pull_request": salon.dispatch_pullrequest,
+            "issue_comment": salon.dispatch_comment,
         }
 
     def _handle_request(self, request):
@@ -147,7 +188,7 @@ class GitHubListener(ProtectedResource):
         if dispatcher:
             post_data = request.args['payload'][0]
             parsed = json.loads(post_data)
-            dispatcher.dispatch(parsed)
+            dispatcher(parsed)
 
 
 def make_plugin(config, http, irc):
