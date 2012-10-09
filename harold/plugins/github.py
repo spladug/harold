@@ -100,13 +100,13 @@ class PushDispatcher(object):
                 self._dispatch_bundle(parsed, repository, branch, commits)
 
 
-class PullRequestDispatcher(object):
+class Salon(object):
     def __init__(self, config, bot, shortener):
         self.config = config
         self.bot = bot
         self.shortener = shortener
 
-    def dispatch(self, parsed):
+    def dispatch_pullrequest(self, parsed):
         action = parsed["action"]
         if action != "opened":
             return
@@ -135,9 +135,13 @@ class GitHubListener(ProtectedResource):
     def __init__(self, config, http, bot):
         ProtectedResource.__init__(self, http)
         shortener = UrlShortener()
+
+        push_dispatcher = PushDispatcher(config, bot, shortener)
+        salon = Salon(config, bot, shortener)
+
         self.dispatchers = {
-            "push": PushDispatcher(config, bot, shortener),
-            "pull_request": PullRequestDispatcher(config, bot, shortener),
+            "push": push_dispatcher.dispatch,
+            "pull_request": salon.dispatch_pullrequest,
         }
 
     def _handle_request(self, request):
@@ -147,7 +151,7 @@ class GitHubListener(ProtectedResource):
         if dispatcher:
             post_data = request.args['payload'][0]
             parsed = json.loads(post_data)
-            dispatcher.dispatch(parsed)
+            dispatcher(parsed)
 
 
 def make_plugin(config, http, irc):
