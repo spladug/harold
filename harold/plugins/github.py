@@ -104,9 +104,8 @@ class Salon(object):
     messages_by_emoji = {
         ":fish:": "%(owner)s, %(user)s just ><))>'d your pull request "
                   "%(repo)s#%(id)s (%(short_url)s)",
-        ":nail_care:": "%(owner)s, %(user)s is awaiting your response to "
-                       "review of pull request %(repo)s#%(id)s "
-                       "(%(short_url)s)",
+        ":nail_care:": "%(owner)s, %(user)s has finished this review pass on "
+                       "pull request %(repo)s#%(id)s (%(short_url)s)",
         ":haircut:": "%(owner)s is ready for further review of pull request "
                      "%(repo)s#%(id)s (%(short_url)s)",
     }
