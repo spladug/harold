@@ -51,6 +51,7 @@ class Alerter(object):
         self.config = config
         self.alerts = {}
         self.quiets = {}
+        self.maintenance = None
 
         self.jabber_bot = jabber_bot
         self.smtp = smtp
@@ -83,7 +84,7 @@ class Alerter(object):
 
     def alert(self, tag, message):
         alert = self._register_alert(tag)
-        if not alert.muted:
+        if not self.maintenance and not alert.muted:
             self.broadcast("<%s> %s" % (tag, message))
 
     def _register_alert(self, tag):
@@ -175,11 +176,17 @@ class Alerter(object):
         "Show status of all live alerts."
 
         if not self.alerts:
-            bot.sendMessage(sender, "No live alerts. :)")
+            with bot.message(sender) as m:
+                if self.maintenance:
+                    print >> m, "IN MAINTENANCE"
+                print >> m, "No live alerts. :)"
             return
 
         now = datetime.datetime.now()
         with bot.message(sender) as m:
+            if self.maintenance:
+                print >>m, "IN MAINTENANCE"
+
             print >>m, "Live alerts:"
             for tag, alert in self.alerts.iteritems():
                 print >>m, ("<%s>%s seen %dx. started %s ago. "
@@ -239,6 +246,37 @@ class Alerter(object):
                     print >> m, "<%s> until %s" % (quiet.user,
                                            quiet.expiration.strftime("%H:%M"))
 
+    def maint(self, bot, sender, minutes):
+        "Silence alerts globally for a specified number of minutes."
+
+        if not self.maintenance:
+            minutes = int(minutes)
+            self.maintenance = reactor.callLater(
+                minutes * 60,
+                self._end_maintenance,
+            )
+            bot.sendMessage(
+                sender,
+                "Maintenance window lasting %d minutes started. Say "
+                '"endmaint" to end it early.' % minutes,
+            )
+        else:
+            bot.sendMessage(sender, "Maintenance already in progress.")
+
+    def _end_maintenance(self):
+        if self.maintenance and self.maintenance.active():
+            self.maintenance.cancel()
+        self.maintenance = None
+
+    def endmaint(self, bot, sender):
+        "End a maintenance window, re-enabling alerts."
+
+        if self.maintenance:
+            self._end_maintenance()
+            bot.sendMessage(sender, "Maintenance ended. How'd it go?")
+        else:
+            bot.sendMessage(sender, "There is no maintenance window active.")
+
 
 def make_plugin(config, http, jabber, smtp):
     alerts_config = AlertsConfig(config)
@@ -254,6 +292,8 @@ def make_plugin(config, http, jabber, smtp):
     jabber.register_command(alerter.stfu)
     jabber.register_command(alerter.back)
     jabber.register_command(alerter.who)
+    jabber.register_command(alerter.maint)
+    jabber.register_command(alerter.endmaint)
 
     # create the watchdog
     watchdog.initialize(http, jabber, alerter)
