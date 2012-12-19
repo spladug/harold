@@ -39,7 +39,7 @@ for repo in repositories:
     print "  - " + repo
 print
 
-netloc = raw_input("Harold GitHub Webhook Host: ")
+netloc = raw_input("Harold GitHub Webhook Netloc: ")
 username = raw_input("GitHub Username: ")
 password = getpass.getpass("GitHub Password: ")
 session = requests.session(auth=HTTPBasicAuth(username, password),
