@@ -3,6 +3,8 @@
 import string
 import random
 import traceback
+import urllib
+import urlparse
 
 from twisted.words.protocols import irc
 from twisted.internet import protocol, ssl
@@ -13,7 +15,7 @@ from harold.dispatcher import Dispatcher
 from harold.plugins.http import ProtectedResource
 from harold.plugin import Plugin
 from harold.conf import PluginConfig, Option, tup
-from harold.utils import Event
+from harold.utils import Event, extract_urls
 
 
 class IrcConfig(PluginConfig):
@@ -79,26 +81,68 @@ class IRCBot(irc.IRCClient):
         irc.IRCClient.connectionLost(self)
         self.factory.dispatcher.deregisterConsumer(self)
 
+    def maybeParrotMessage(self, user, channel, msg):
+        fate = random.random()
+        if channel == self.parrot_channel and fate < .005:
+            parrotized = ' '.join(msg.split(' ')[-2:]) + ". squawk!"
+            self.msg(self.parrot_channel, parrotized)
+        elif channel == self.parrot_channel and fate < .0025:
+            self.msg(self.parrot_channel,
+                     "HERMOCRATES! A friend of Socrates! Bwaaak!")
+
+    def addContextToRedditLinks(self, channel, msg):
+        contexted = False
+        urls_in_message = extract_urls(msg)
+        for url in urls_in_message:
+            # we only care about reddit.com links
+            if not url.hostname.endswith("reddit.com"):
+                continue
+
+            # bail out if it's already got context
+            query_string = urlparse.parse_qs(url.query)
+            if query_string.get('context'):
+                continue
+
+            # it must be a comment page focused on a comment
+            path_components = url.path.strip("/").split("/")
+            if not path_components:
+                continue
+            if path_components[0] == "r":
+                path_components = path_components[2:]
+            if path_components and path_components[0] != "comments":
+                continue
+            # /comments/id/title/focus
+            if len(path_components) != 4:
+                continue
+
+            query_string['context'] = 3
+            new_url = urlparse.urlunparse((
+                url.scheme,
+                url.netloc,
+                url.path,
+                url.params,
+                urllib.urlencode(query_string, doseq=True),
+                url.fragment,
+            ))
+            self.msg(channel, "FTFY: " + new_url)
+            contexted = True
+        return contexted
+
     def privmsg(self, user, channel, msg):
         split = msg.split()
-
-        if len(split) < 2:
-            return
-
-        highlight, command, args = (split[0].lower(),
-                                    split[1].lower(),
-                                    split[2:])
+        if len(split) >= 2:
+            highlight = split[0].lower()
+        else:
+            highlight = ""
 
         if not highlight.startswith(self.nickname):
-            fate = random.random()
-            if channel == self.parrot_channel and fate < .005:
-                parrotized = ' '.join(msg.split(' ')[-2:]) + ". squawk!"
-                self.msg(self.parrot_channel, parrotized)
-            elif channel == self.parrot_channel and fate < .0025:
-                self.msg(self.parrot_channel,
-                         "HERMOCRATES! A friend of Socrates! Bwaaak!")
+            if self.addContextToRedditLinks(channel, msg):
+                return
+
+            self.maybeParrotMessage(user, channel, msg)
             return
 
+        command, args = (split[1].lower(), split[2:])
         fn = self.plugin.commands.get(command)
         if not fn:
             self.me(channel, "is just a simple bot. he has no "
