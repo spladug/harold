@@ -6,9 +6,10 @@ NoDefault = object()
 
 
 class HaroldConfiguration(object):
-    def __init__(self, filenames):
+    def __init__(self, filename):
         self.parser = RawConfigParser()
-        self.parser.read(filenames)
+        with open(filename, "r") as config_file:
+            self.parser.readfp(config_file)
 
     def plugin_names(self):
         for section in self.parser.sections():
