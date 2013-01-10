@@ -12,14 +12,19 @@ addgroup --system harold
 adduser --system harold
 
 # the repo itself
-cd /opt
-git clone https://github.com/spladug/harold.git
+mkdir -p /opt/harold/lib
+mkdir -p /opt/harold/etc
+cd /opt/harold/
+git clone https://github.com/spladug/harold.git /opt/harold/lib/
 
 # copy the upstart scripts into place
-cp /opt/harold/upstart/*.conf /etc/init/
+cp /opt/harold/lib/upstart/*.conf /etc/init/
 
 # done!
 cat <<END
-harold is installed. please create and configure /opt/harold/harold.ini and
-start harold via upstart ("start harold").
+Harold is installed. please create and configure configuration files for harold
+instances in /opt/harold/etc/____.ini and start harold via upstart as follows:
+
+    start harold-startup
+
 END
