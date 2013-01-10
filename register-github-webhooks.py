@@ -5,7 +5,9 @@ import getpass
 import json
 import requests
 from requests.auth import HTTPBasicAuth
+import os
 import urlparse
+import sys
 
 from harold.plugins.github import REPOSITORY_PREFIX
 
@@ -23,16 +25,37 @@ def _make_hooks_url(repo, endpoint=None):
         None
     ))
 
+
+# config file is an expected argument
+bin_name = os.path.basename(sys.argv[0])
+if len(sys.argv) != 2:
+    print >> sys.stderr, "USAGE: %s INI_FILE" % bin_name
+    sys.exit(1)
+
+config_file = sys.argv[1]
+try:
+    parser = ConfigParser.ConfigParser()
+    with open(config_file, "r") as f:
+        parser.readfp(f)
+except Exception as e:
+    print >> sys.stderr, "%s: failed to read config file %r: %s" % (
+        bin_name,
+        config_file,
+        e,
+    )
+    sys.exit(1)
+
 # figure out which repos we care about
 repositories = []
-parser = ConfigParser.ConfigParser()
-with open("harold.ini", "r") as f:
-    parser.readfp(f)
 
 for section in parser.sections():
     if not section.startswith(REPOSITORY_PREFIX):
         continue
     repositories.append(section[len(REPOSITORY_PREFIX):])
+
+if not repositories:
+    print "No repositories to register with!"
+    sys.exit(0)
 
 print "I will ensure webhooks are registered for:"
 for repo in repositories:
