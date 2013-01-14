@@ -47,16 +47,16 @@ def version(irc, sender, channel):
 
 
 def who(irc, sender, channel, *args):
-    irc.me(channel, "is a bot. see http://github.com/spladug/harold")
+    irc.describe(channel, "is a bot. see http://github.com/spladug/harold")
 
 
 def wanna(irc, sender, channel, *args):
     if args:
         clean = args[0].translate(string.maketrans("", ""), string.punctuation)
         if clean.lower() == "cracker":
-            irc.me(channel, "squawks: yes!")
+            irc.describe(channel, "squawks: yes!")
         else:
-            irc.me(channel, "flies away in disgust")
+            irc.describe(channel, "flies away in disgust")
 
 
 class IRCBot(irc.IRCClient):
@@ -145,15 +145,15 @@ class IRCBot(irc.IRCClient):
         command, args = (split[1].lower(), split[2:])
         fn = self.plugin.commands.get(command)
         if not fn:
-            self.me(channel, "is just a simple bot. he has no "
-                             "idea what you mean!")
+            self.describe(channel, "is just a simple bot. he has no "
+                                 "idea what you mean!")
             return
 
         try:
             fn(self, user, channel, *args)
         except:
             traceback.print_exc()
-            self.me(channel, "just had a hiccup.")
+            self.describe(channel, "just had a hiccup.")
 
     def send_message(self, channel, message):
         self.msg(channel, message.encode('utf-8'))
