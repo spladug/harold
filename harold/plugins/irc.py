@@ -19,12 +19,14 @@ from harold.utils import Event, extract_urls
 
 
 class IrcConfig(PluginConfig):
+    username = Option(str, default=None)
     nick = Option(str)
     password = Option(str, default=None)
     host = Option(str)
     port = Option(int, default=6667)
     use_ssl = Option(bool, default=False)
     channels = Option(tup, default=[])
+    userserv_password = Option(str, default=None)
     parrot_channel = Option(str, default=None)
 
 
@@ -64,6 +66,10 @@ class IRCBot(irc.IRCClient):
     lineRate = .25  # rate limit to 4 messages / second
 
     def signedOn(self):
+        if self.userserv_password:
+            self.msg("userserv", "login %s %s" % (self.username,
+                                                  self.userserv_password))
+
         self.topics = {}
         self.topic_i_just_set = None
 
@@ -177,6 +183,8 @@ class IRCBotFactory(protocol.ClientFactory):
             nickname = self.config.nick
             password = self.config.password
             plugin = self.plugin
+            username = self.config.username
+            userserv_password = self.config.userserv_password
             parrot_channel = self.config.parrot_channel
         self.protocol = _ConfiguredBot
 
