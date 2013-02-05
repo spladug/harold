@@ -57,6 +57,8 @@ def wanna(irc, sender, channel, *args):
         clean = args[0].translate(string.maketrans("", ""), string.punctuation)
         if clean.lower() == "cracker":
             irc.describe(channel, "squawks: yes!")
+        elif clean.lower() == "rram":
+            irc.describe(channel, "purrs.")
         else:
             irc.describe(channel, "flies away in disgust")
 
