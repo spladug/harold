@@ -168,7 +168,7 @@ class IRCBot(irc.IRCClient):
 
     def set_topic(self, channel, topic):
         self.topic_i_just_set = topic
-        self.send_message("ChanServ", " ".join(("TOPIC", channel, topic)))
+        self.topic(channel, topic)
 
     def restore_topic(self, channel):
         self.set_topic(channel, self.topics[channel])
