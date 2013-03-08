@@ -240,6 +240,7 @@ def make_plugin(config, http, irc):
     deploy_root.putChild('begin', DeployBeganListener(http, monitor))
     deploy_root.putChild('end', DeployEndedListener(http, monitor))
     deploy_root.putChild('abort', DeployAbortedListener(http, monitor))
+    deploy_root.putChild('error', DeployErrorListener(http, monitor))
     deploy_root.putChild('progress', DeployProgressListener(http, monitor))
 
     # register our irc commands
