@@ -1,3 +1,4 @@
+import collections
 import json
 
 from harold.plugins.http import ProtectedResource
@@ -61,9 +62,9 @@ class PushDispatcher(object):
         d.addCallback(onUrlShortened)
 
     def _dispatch_bundle(self, info, repository, branch, commits):
-        authors = set()
+        authors = collections.Counter()
         for commit in commits:
-            authors.add(_get_commit_author(commit))
+            authors[_get_commit_author(commit)] += 1
         before = info['before']
         after = info['after']
         commit_range = before[:7] + '..' + after[:7]
@@ -78,7 +79,7 @@ class PushDispatcher(object):
                                   repository.bundled_format % {
                 'repository': repository.name,
                 'branch': branch,
-                'authors': ', '.join(authors),
+                'authors': ', '.join(a for a, c in authors.most_common()),
                 'commit_count': len(commits),
                 'commit_range': commit_range,
                 'url': short_url,
