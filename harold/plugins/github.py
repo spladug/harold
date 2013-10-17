@@ -1,6 +1,8 @@
 import collections
 import json
 
+from twisted.internet.defer import inlineCallbacks
+
 from harold.plugins.http import ProtectedResource
 from harold.shorturl import UrlShortener
 from harold.conf import PluginConfig, Option, tup
@@ -116,6 +118,7 @@ class Salon(object):
         self.bot = bot
         self.shortener = shortener
 
+    @inlineCallbacks
     def dispatch_pullrequest(self, parsed):
         action = parsed["action"]
         if action != "opened":
@@ -125,18 +128,16 @@ class Salon(object):
         repository = self.config.repositories_by_name[repository_name]
 
         html_link = parsed["pull_request"]["_links"]["html"]["href"]
-        d = self.shortener.make_short_url(html_link)
-        def onUrlShortened(short_url):
-            message = ("%(user)s opened pull request #%(id)d (%(short_url)s) "
-                       "on %(repo)s: %(title)s")
-            self.bot.send_message(repository.channel, message % dict(
-                user=parsed["sender"]["login"],
-                id=parsed["number"],
-                short_url=short_url,
-                repo=repository_name,
-                title=parsed["pull_request"]["title"][:72],
-            ))
-        d.addCallback(onUrlShortened)
+        short_url = yield self.shortener.make_short_url(html_link)
+        message = ("%(user)s opened pull request #%(id)d (%(short_url)s) "
+                   "on %(repo)s: %(title)s")
+        self.bot.send_message(repository.channel, message % dict(
+            user=parsed["sender"]["login"],
+            id=parsed["number"],
+            short_url=short_url,
+            repo=repository_name,
+            title=parsed["pull_request"]["title"][:72],
+        ))
 
     def dispatch_comment(self, parsed):
         action = parsed["action"]
@@ -149,20 +150,19 @@ class Salon(object):
                 self._announce_emoji(message, parsed)
                 break
 
+    @inlineCallbacks
     def _announce_emoji(self, message, parsed):
         repository_name = parsed["repository"]["full_name"]
         repository = self.config.repositories_by_name[repository_name]
         html_link = parsed["issue"]["pull_request"]["html_url"]
-        d = self.shortener.make_short_url(html_link)
-        def onUrlShortened(short_url):
-            self.bot.send_message(repository.channel, message % dict(
-                user=parsed["sender"]["login"],
-                owner=parsed["issue"]["user"]["login"],
-                id=parsed["issue"]["number"],
-                short_url=short_url,
-                repo=repository_name,
-            ))
-        d.addCallback(onUrlShortened)
+        short_url = yield self.shortener.make_short_url(html_link)
+        self.bot.send_message(repository.channel, message % dict(
+            user=parsed["sender"]["login"],
+            owner=parsed["issue"]["user"]["login"],
+            id=parsed["issue"]["number"],
+            short_url=short_url,
+            repo=repository_name,
+        ))
 
 
 class GitHubListener(ProtectedResource):
