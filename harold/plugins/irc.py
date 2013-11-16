@@ -85,8 +85,8 @@ class IRCBot(irc.IRCClient):
             self.topics[channel] = topic
         self.factory.plugin.topicUpdated(user, channel, topic)
 
-    def connectionLost(self):
-        irc.IRCClient.connectionLost(self)
+    def connectionLost(self, *args, **kwargs):
+        irc.IRCClient.connectionLost(self, *args, **kwargs)
         self.factory.dispatcher.deregisterConsumer(self)
 
     def maybeParrotMessage(self, user, channel, msg):
