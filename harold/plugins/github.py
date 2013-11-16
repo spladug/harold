@@ -1,5 +1,6 @@
 import collections
 import json
+import re
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -111,6 +112,8 @@ class Salon(object):
                        "pull request %(repo)s#%(id)s (%(short_url)s)",
         ":haircut:": "%(owner)s is ready for further review of pull request "
                      "%(repo)s#%(id)s (%(short_url)s)",
+        ":eyeglasses:": "%(reviewers)s: %(user)s has requested your review "
+                        "of %(repo)s#%(id)s (%(short_url)s)",
     }
 
     def __init__(self, config, bot, shortener):
@@ -139,6 +142,26 @@ class Salon(object):
             title=parsed["pull_request"]["title"][:72],
         ))
 
+        if ":eyeglasses:" in parsed["pull_request"]["body"]:
+            reviewers = self._extract_reviewers(parsed["pull_request"]["body"])
+            if reviewers:
+                self.bot.send_message(repository.channel,
+                                      "%(reviewers)s, %(user)s has requested "
+                                      "your review of ^" % {
+                                          "reviewers": ", ".join(reviewers),
+                                          "user": parsed["sender"]["login"],
+                                      })
+
+    mention_re = re.compile(r"@([A-Za-z0-9][A-Za-z0-9-]*)")
+    @classmethod
+    def _extract_reviewers(cls, body):
+        reviewers = set()
+        for line in body.splitlines():
+            if ":eyeglasses:" in line:
+                reviewers.update(cls.mention_re.findall(line))
+        return reviewers
+
+    @inlineCallbacks
     def dispatch_comment(self, parsed):
         action = parsed["action"]
         if action != "created":
@@ -147,22 +170,30 @@ class Salon(object):
         body = parsed["comment"]["body"]
         for emoji, message in self.messages_by_emoji.iteritems():
             if emoji in body:
-                self._announce_emoji(message, parsed)
                 break
+        else:
+            return
 
-    @inlineCallbacks
-    def _announce_emoji(self, message, parsed):
         repository_name = parsed["repository"]["full_name"]
         repository = self.config.repositories_by_name[repository_name]
         html_link = parsed["issue"]["pull_request"]["html_url"]
         short_url = yield self.shortener.make_short_url(html_link)
-        self.bot.send_message(repository.channel, message % dict(
+
+        message_info = dict(
             user=parsed["sender"]["login"],
             owner=parsed["issue"]["user"]["login"],
             id=parsed["issue"]["number"],
             short_url=short_url,
             repo=repository_name,
-        ))
+        )
+
+        if emoji == ":eyeglasses:":
+            reviewers = self._extract_reviewers(body)
+            if not reviewers:
+                return
+            message_info["reviewers"] = ", ".join(reviewers)
+
+        self.bot.send_message(repository.channel, message % message_info)
 
 
 class GitHubListener(ProtectedResource):
