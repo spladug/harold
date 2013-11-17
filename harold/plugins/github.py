@@ -24,6 +24,12 @@ class GitHubConfig(object):
             self.repositories_by_name[repository.name] = repository
             channels.add(repository.channel)
 
+        mappings = config.parser.items("harold:plugin:github")
+        self.nicks_by_user = dict(mappings)
+
+    def nick_by_user(self, user):
+        return self.nicks_by_user.get(user, user)
+
 
 class RepositoryConfig(PluginConfig):
     channel = Option(str)
@@ -59,7 +65,7 @@ class PushDispatcher(object):
 
                 'commit_id': commit['id'][:7],
                 'url': short_url,
-                'author': _get_commit_author(commit),
+                'author': self.config.nick_by_user(_get_commit_author(commit)),
                 'summary': commit['message'].splitlines()[0]
             })
         d.addCallback(onUrlShortened)
@@ -67,7 +73,7 @@ class PushDispatcher(object):
     def _dispatch_bundle(self, info, repository, branch, commits):
         authors = collections.Counter()
         for commit in commits:
-            authors[_get_commit_author(commit)] += 1
+            authors[self.config.nick_by_user(_get_commit_author(commit))] += 1
         before = info['before']
         after = info['after']
         commit_range = before[:7] + '..' + after[:7]
@@ -132,10 +138,11 @@ class Salon(object):
 
         html_link = parsed["pull_request"]["_links"]["html"]["href"]
         short_url = yield self.shortener.make_short_url(html_link)
+        submitter = self.config.nick_by_user(parsed["sender"]["login"])
         message = ("%(user)s opened pull request #%(id)d (%(short_url)s) "
                    "on %(repo)s: %(title)s")
         self.bot.send_message(repository.channel, message % dict(
-            user=parsed["sender"]["login"],
+            user=submitter,
             id=parsed["number"],
             short_url=short_url,
             repo=repository_name,
@@ -144,12 +151,13 @@ class Salon(object):
 
         if ":eyeglasses:" in parsed["pull_request"]["body"]:
             reviewers = self._extract_reviewers(parsed["pull_request"]["body"])
+            reviewers = map(self.config.nick_by_user, reviewers)
             if reviewers:
                 self.bot.send_message(repository.channel,
                                       "%(reviewers)s: %(user)s has requested "
                                       "your review of ^" % {
                                           "reviewers": ", ".join(reviewers),
-                                          "user": parsed["sender"]["login"],
+                                          "user": submitter,
                                       })
 
     mention_re = re.compile(r"@([A-Za-z0-9][A-Za-z0-9-]*)")
@@ -180,7 +188,7 @@ class Salon(object):
         short_url = yield self.shortener.make_short_url(html_link)
 
         message_info = dict(
-            user=parsed["sender"]["login"],
+            user=self.config.nick_by_user(parsed["sender"]["login"]),
             owner=parsed["issue"]["user"]["login"],
             id=parsed["issue"]["number"],
             short_url=short_url,
@@ -191,6 +199,7 @@ class Salon(object):
             reviewers = self._extract_reviewers(body)
             if not reviewers:
                 return
+            reviewers = map(self.config.nick_by_user, reviewers)
             message_info["reviewers"] = ", ".join(reviewers)
 
         self.bot.send_message(repository.channel, message % message_info)

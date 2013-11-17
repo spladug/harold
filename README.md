@@ -70,10 +70,13 @@ may be added by other plugins.
 
 The github plugin implements an endpoint for GitHub webhook notifications. It
 depends on the IRC plugin and will notify users via IRC when code is pushed to
-repositories under its purview. The plugin itself does not have any
-configuration (though the section header must exist in the config file for it
-to be activated.) Instead, each repository that will send notifications should
-have its own section of the format `[harold:repository:owner/repository]`.
+repositories under its purview. The plugin itself has optional configuration
+and each repository that will send notifications should also have its own
+section of the format `[harold:repository:owner/repository]`.
+
+The configuration for the plugin itself takes the form of "github-username =
+irc nick". Where each pair describes a mapping of a github username to an IRC
+nickname so that highlights are done properly when people use different names.
 
 ## github repository configuration
 
