@@ -146,7 +146,7 @@ class Salon(object):
             reviewers = self._extract_reviewers(parsed["pull_request"]["body"])
             if reviewers:
                 self.bot.send_message(repository.channel,
-                                      "%(reviewers)s, %(user)s has requested "
+                                      "%(reviewers)s: %(user)s has requested "
                                       "your review of ^" % {
                                           "reviewers": ", ".join(reviewers),
                                           "user": parsed["sender"]["login"],
