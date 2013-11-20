@@ -28,7 +28,7 @@ class GitHubConfig(object):
         self.nicks_by_user = dict(mappings)
 
     def nick_by_user(self, user):
-        return self.nicks_by_user.get(user, user)
+        return self.nicks_by_user.get(user.lower(), user)
 
 
 class RepositoryConfig(PluginConfig):
