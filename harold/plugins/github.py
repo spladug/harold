@@ -189,7 +189,7 @@ class Salon(object):
 
         message_info = dict(
             user=self.config.nick_by_user(parsed["sender"]["login"]),
-            owner=parsed["issue"]["user"]["login"],
+            owner=self.config.nick_by_user(parsed["issue"]["user"]["login"]),
             id=parsed["issue"]["number"],
             short_url=short_url,
             repo=repository_name,
