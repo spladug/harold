@@ -14,14 +14,22 @@ class Plugin(object):
 def _import_plugin_modules(config):
     plugins = {}
     dependencies = {}
+    optional_dependencies = {}
+
     for plugin_name in config.plugin_names():
         plugin = importlib.import_module("harold.plugins." + plugin_name)
         plugins[plugin_name] = plugin
 
         args, varargs, kw, defaults = inspect.getargspec(plugin.make_plugin)
-        dependencies[plugin_name] = set(args)
 
-    return plugins, dependencies
+        if defaults:
+            optional_count = len(defaults)
+            dependencies[plugin_name] = set(args[:-optional_count])
+            optional_dependencies[plugin_name] = set(args[-optional_count:])
+        else:
+            dependencies[plugin_name] = set(args)
+
+    return plugins, dependencies, optional_dependencies
 
 
 def _topological_sort(dependencies):
@@ -47,7 +55,18 @@ def _topological_sort(dependencies):
 
 
 def load_plugins(config):
-    plugins, dependencies = _import_plugin_modules(config)
+    plugins, dependencies, optional_deps = _import_plugin_modules(config)
+
+    # move optional dependencies to real dependencies for topo sort if we
+    # determine that they do indeed exist.
+    for plugin_name, plugin_optional_deps in optional_deps.iteritems():
+        for optional_dep in plugin_optional_deps:
+            if optional_dep in plugins:
+                dependencies[plugin_name].add(optional_dep)
+            else:
+                print "%s: Discarding optional dependency %r" % (plugin_name,
+                                                                 optional_dep)
+
     startup_order = _topological_sort(dependencies)
 
     initialized_plugins = {'config': config}
