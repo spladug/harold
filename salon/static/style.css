@@ -1,0 +1,109 @@
+body {
+    font-family: monospace;
+}
+
+@font-face {
+    font-family: "Alex Brush";
+    src: url(AlexBrush-Regular.ttf);
+}
+
+.state-fish { background-image: url(images/fish.png); }
+.state-haircut { background-image: url(images/haircut.png); }
+.state-nail_care { background-image: url(images/nail_care.png); }
+.state-unreviewed { background-image: url(images/see_no_evil.png); }
+.state-eyeglasses { background-image: url(images/eyeglasses.png); }
+
+h1 {
+    font-family: "Alex Brush";
+    font-size: 500%;
+    margin: .2em 0;
+
+    color: hotpink;
+    padding: 10px 20px 0 0;
+}
+
+.listing {
+    width: 600px;
+    padding: 6px;
+    margin: 0 1em 0 0;
+    float: left;
+}
+
+h2 {
+    margin: -6px;
+    padding: 6px 6px 6px 32px;
+    color: white;
+    background: #666;
+    font-variant: small-caps;
+}
+
+h3 {
+    padding: .5em 0 0 25px;
+    font-size: large;
+    background-position: left center;
+    background-size: 20px 20px;
+    background-repeat: no-repeat;
+}
+
+h4 {
+    font-weight: normal;
+    font-size: medium;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.pull-request, .nada {
+    width: 572px;
+    padding: 3px 3px 3px 5px;
+    margin-left: 20px;
+}
+
+.pull-request {
+    margin-top: 5px;
+    border-top: 1px solid #ccc;
+}
+
+h3 + .pull-request {
+    margin-top: 0;
+    border-top-width: 0;
+}
+
+.tagline {
+    color: #666;
+    margin: 0;
+}
+
+.tagline a,
+.tagline a:visited {
+    color: inherit;
+    text-decoration: none;
+}
+
+.tagline a:hover {
+    text-decoration: underline;
+}
+
+.nada {
+    color: #666;
+}
+
+.state {
+    display: block;
+    width: 20px;
+    height: 20px;
+    text-indent: -9999px;
+    background-size: 20px 20px;
+    background-repeat: no-repeat;
+    background-position: center center;
+}
+
+ul.review-states {
+    margin: 0;
+    padding: 0;
+    float: right;
+}
+
+ul.review-states li {
+    display: inline-block;
+}

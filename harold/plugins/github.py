@@ -1,8 +1,9 @@
 import collections
+import datetime
 import json
 import re
 
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 from harold.plugins.http import ProtectedResource
 from harold.shorturl import UrlShortener
@@ -10,6 +11,28 @@ from harold.conf import PluginConfig, Option, tup
 
 
 REPOSITORY_PREFIX = 'harold:repository:'
+
+# https://github.com/reddit/reddit/pull/33#issuecomment-767815
+_PULL_REQUEST_URL_RE = re.compile(r"""
+https://github.com/
+(?P<repository>[^/]+/[^/]+)
+/pull/
+(?P<number>\d+)
+[#]issuecomment-\d+
+""", re.VERBOSE)
+
+
+def _parse_timestamp(ts):
+    return datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+
+
+_MENTION_RE = re.compile(r"@([A-Za-z0-9][A-Za-z0-9-]*)")
+def _extract_reviewers(body):
+    reviewers = set()
+    for line in body.splitlines():
+        if ":eyeglasses:" in line:
+            reviewers.update(_MENTION_RE.findall(line))
+    return reviewers
 
 
 class GitHubConfig(object):
@@ -112,6 +135,119 @@ class PushDispatcher(object):
                 self._dispatch_bundle(parsed, repository, branch, commits)
 
 
+class SalonDatabase(object):
+    def __init__(self, database):
+        self.database = database
+
+    @inlineCallbacks
+    def _insert(self, table, data, replace_on_conflict=False):
+        if not self.database:
+            return
+
+        # this isn't as bad as it looks. just the table/column names are
+        # done with string concatenation; those should be coming from
+        # hard-coded strings in the source and therefore safe. actual data
+        # is parameterized.
+        query = (
+            "INSERT %(conflict)s INTO %(table)s (%(columns)s) "
+            "VALUES (%(placeholders)s);" % {
+                "conflict": "OR REPLACE" if replace_on_conflict else "",
+                "table": table,
+                "columns": ", ".join(data.iterkeys()),
+                "placeholders": ", ".join(":" + x for x in data.iterkeys()),
+            }
+        )
+        yield self.database.runOperation(query, data)
+
+    def _upsert(self, table, data):
+        return self._insert(table, data, replace_on_conflict=True)
+
+    @inlineCallbacks
+    def _is_author(self, repo, pr_id, username):
+        if not self.database:
+            return
+
+        rows = yield self.database.runQuery(
+            "SELECT COUNT(*) FROM github_pull_requests WHERE "
+            "repository = :repository AND id = :id AND author = :username",
+            {
+                "repository": repo,
+                "id": pr_id,
+                "username": username,
+            }
+        )
+        returnValue(bool(rows[0][0]))
+
+    @inlineCallbacks
+    def process_pullrequest(self, pull_request, repository):
+        repo = repository or pull_request["repository"]["full_name"]
+        id = int(pull_request["number"])
+
+        timestamp = _parse_timestamp(pull_request["created_at"])
+        yield self._upsert("github_pull_requests", {
+            "repository": repo,
+            "id": id,
+            "created": timestamp,
+            "author": pull_request["user"]["login"],
+            "state": pull_request["state"],
+            "title": pull_request["title"],
+            "url": pull_request["html_url"],
+        })
+        yield self._add_mentions(repo, id, pull_request["body"], timestamp)
+
+    @inlineCallbacks
+    def process_comment(self, comment):
+        m = _PULL_REQUEST_URL_RE.match(comment["html_url"])
+        if not m:
+            return
+
+        repo = m.group("repository")
+        pr_id = int(m.group("number"))
+        body = comment["body"]
+        timestamp = _parse_timestamp(comment["created_at"])
+
+        is_author = yield self._is_author(repo, pr_id, comment["user"]["login"])
+        if is_author:
+            yield self._add_mentions(repo, pr_id, body, timestamp)
+
+        state = "unreviewed"
+        if is_author and ":haircut:" in body:
+            state = "haircut"
+        elif ":nail_care:" in body:
+            state = "nail_care"
+        elif ":fish:" in body:
+            state = "fish"
+
+        should_overwrite = (state != "unreviewed")
+
+        try:
+            yield self._insert("github_review_states", {
+                "repository": repo,
+                "pull_request_id": pr_id,
+                "user": comment["user"]["login"],
+                "timestamp": timestamp,
+                "state": state,
+            }, replace_on_conflict=should_overwrite)
+        except self.database.module.IntegrityError:
+            if should_overwrite:
+                raise
+
+    @inlineCallbacks
+    def _add_mentions(self, repo, id, body, timestamp):
+        if ":eyeglasses:" in body:
+            for mention in _extract_reviewers(body):
+                try:
+                    yield self._insert("github_review_states", {
+                        "repository": repo,
+                        "pull_request_id": id,
+                        "user": mention,
+                        "timestamp": timestamp,
+                        "state": "unreviewed",
+                    })
+                except self.database.module.IntegrityError:
+                    pass
+
+
 class Salon(object):
     messages_by_emoji = {
         ":fish:": "%(owner)s, %(user)s just ><))>'d your pull request "
@@ -124,15 +260,18 @@ class Salon(object):
                         "of %(repo)s#%(id)s (%(short_url)s)",
     }
 
-    def __init__(self, config, bot, shortener):
+    def __init__(self, config, bot, shortener, database):
         self.config = config
         self.bot = bot
         self.shortener = shortener
+        self.database = SalonDatabase(database)
 
     @inlineCallbacks
     def dispatch_pullrequest(self, parsed):
-        action = parsed["action"]
-        if action != "opened":
+        yield self.database.process_pullrequest(parsed["pull_request"],
+                                        parsed["repository"]["full_name"])
+
+        if parsed["action"] != "opened":
             return
 
         repository_name = parsed["repository"]["full_name"]
@@ -152,7 +291,7 @@ class Salon(object):
         ))
 
         if ":eyeglasses:" in parsed["pull_request"]["body"]:
-            reviewers = self._extract_reviewers(parsed["pull_request"]["body"])
+            reviewers = _extract_reviewers(parsed["pull_request"]["body"])
             reviewers = map(self.config.nick_by_user, reviewers)
             if reviewers:
                 self.bot.send_message(repository.channel,
@@ -162,20 +301,12 @@ class Salon(object):
                                           "user": submitter,
                                       })
 
-    mention_re = re.compile(r"@([A-Za-z0-9][A-Za-z0-9-]*)")
-    @classmethod
-    def _extract_reviewers(cls, body):
-        reviewers = set()
-        for line in body.splitlines():
-            if ":eyeglasses:" in line:
-                reviewers.update(cls.mention_re.findall(line))
-        return reviewers
-
     @inlineCallbacks
     def dispatch_comment(self, parsed):
-        action = parsed["action"]
-        if action != "created":
+        if parsed["action"] != "created":
             return
+
+        yield self.database.process_comment(parsed["comment"])
 
         body = parsed["comment"]["body"]
         for emoji, message in self.messages_by_emoji.iteritems():
@@ -198,7 +329,7 @@ class Salon(object):
         )
 
         if emoji == ":eyeglasses:":
-            reviewers = self._extract_reviewers(body)
+            reviewers = _extract_reviewers(body)
             if not reviewers:
                 return
             reviewers = map(self.config.nick_by_user, reviewers)
@@ -210,12 +341,12 @@ class Salon(object):
 class GitHubListener(ProtectedResource):
     isLeaf = True
 
-    def __init__(self, config, http, bot):
+    def __init__(self, config, http, bot, database):
         ProtectedResource.__init__(self, http)
         shortener = UrlShortener()
 
         push_dispatcher = PushDispatcher(config, bot, shortener)
-        salon = Salon(config, bot, shortener)
+        salon = Salon(config, bot, shortener, database)
 
         self.dispatchers = {
             "push": push_dispatcher.dispatch,
@@ -233,9 +364,10 @@ class GitHubListener(ProtectedResource):
             dispatcher(parsed)
 
 
-def make_plugin(config, http, irc):
+def make_plugin(config, http, irc, database):
     gh_config = GitHubConfig(config)
     for channel in gh_config.channels:
         irc.channels.add(channel)
 
-    http.root.putChild('github', GitHubListener(gh_config, http, irc.bot))
+    http.root.putChild('github', GitHubListener(gh_config, http, irc.bot,
+                                                database))

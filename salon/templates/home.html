@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+  <head>
+    <title>the salon</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}">
+  </head>
+  <body>
+    <h1>harold's beauty salon</h1>
+
+    {% macro truncated_title(title, url) -%}
+      {% if title|length > 70: %}
+      <a href="{{ url }}" title="{{ title }}">{{ title[:70] }}&hellip;</a>
+      {% else %}
+      <a href="{{ url }}">{{ title }}</a>
+      {% endif %}
+    {%- endmacro %}
+
+    {% macro timestamp(ts) -%}
+    <time datetime="{{ ts.isoformat() }}" title="{{ ts.strftime("%a %d %b %Y") }}" >{{ ts.strftime("%Y-%m-%d") }}</time>
+    {%- endmacro %}
+
+    <div class="listing">
+      <h2>to review</h2>
+      {% for state in ["haircut", "unreviewed", "nail_care", "fish"]: %}
+      <h3 class="state-{{ state }}">{{ state_meanings[state] }}</h3>
+        {% for pull_request in to_review[state]: %}
+        <div class="pull-request">
+          <h4>{{ truncated_title(pull_request.title, pull_request.url) }}</h4>
+          <p class="tagline">
+            {{ timestamp(pull_request.created) }}
+            &middot;
+            <a href="https://github.com/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+            &middot;
+            <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
+          </p>
+        </div>
+        {% else %}
+        <p class="nada" lang="es">nada</p>
+        {% endfor %}
+      {% endfor %}
+    </div>
+
+    <div class="listing">
+      <h2>my pull requests</h2>
+      {% for state in ["fish", "eyeglasses", "nail_care", "unreviewed", "haircut"]: %}
+      <h3 class="state-{{ state }}">{{ state_meanings[state] }}</h3>
+        {% for pull_request in my_pulls[state]: %}
+        <div class="pull-request">
+          <ul class="review-states">
+            {% for user, state in pull_request.current_states().iteritems(): %}
+              {% if user != github_username or state != "unreviewed": %}
+              <li title="@{{ user }}: {{ state_meanings[state] }}" class="state state-{{ state }}">:{{ state }}:</li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+
+          <h4>{{ truncated_title(pull_request.title, pull_request.url) }}</h4>
+          <p class="tagline">
+            {{ timestamp(pull_request.created) }}
+            &middot;
+            <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
+          </p>
+        </div>
+        {% else %}
+        <p class="nada" lang="es">nada</p>
+        {% endfor %}
+      {% endfor %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/timetext.js') }}"></script>
+  </body>
+</html>
