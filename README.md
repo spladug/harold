@@ -235,6 +235,15 @@ Message to send when alarm fires.
 
 A cron-schedule of when the event fires.
 
+## database
+
+The database plugin provides a simple twisted ADBAPI interface to a specified database for other
+plugins to use.
+
+### connection\_string
+
+A SQLAlchemy-style connection string.
+
 ## Example configuration file
 
     [harold:plugin:ident]
