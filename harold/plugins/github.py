@@ -8,12 +8,14 @@ from harold.plugins.http import ProtectedResource
 from harold.shorturl import UrlShortener
 from harold.conf import PluginConfig, Option, tup
 
+
 REPOSITORY_PREFIX = 'harold:repository:'
 
 
 class GitHubConfig(object):
-    def __init__(self, config, channels):
+    def __init__(self, config):
         self.repositories_by_name = {}
+        self.channels = set()
 
         for section in config.parser.sections():
             if not section.startswith(REPOSITORY_PREFIX):
@@ -22,7 +24,7 @@ class GitHubConfig(object):
             repository = RepositoryConfig(config, section=section)
             repository.name = section[len(REPOSITORY_PREFIX):]
             self.repositories_by_name[repository.name] = repository
-            channels.add(repository.channel)
+            self.channels.add(repository.channel)
 
         mappings = config.parser.items("harold:plugin:github")
         self.nicks_by_user = dict(mappings)
@@ -232,6 +234,8 @@ class GitHubListener(ProtectedResource):
 
 
 def make_plugin(config, http, irc):
-    gh_config = GitHubConfig(config, irc.channels)
+    gh_config = GitHubConfig(config)
+    for channel in gh_config.channels:
+        irc.channels.add(channel)
 
     http.root.putChild('github', GitHubListener(gh_config, http, irc.bot))
