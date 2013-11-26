@@ -364,7 +364,7 @@ class GitHubListener(ProtectedResource):
             dispatcher(parsed)
 
 
-def make_plugin(config, http, irc, database):
+def make_plugin(config, http, irc, database=None):
     gh_config = GitHubConfig(config)
     for channel in gh_config.channels:
         irc.channels.add(channel)
