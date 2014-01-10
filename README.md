@@ -134,8 +134,8 @@ Defaults to
 ### Configuring GitHub for postreceive
 
 Use the register-github-webhooks.py script in this directory. Set the webhook
-host to a publicly accessible name for the harold HTTP server, e.g.
-123.45.67.89:8888.
+netloc to a publicly accessible name / port for the harold HTTP server, e.g.
+`123.45.67.89:8888` (no scheme, path, etc.).
 
 ## ident
 
