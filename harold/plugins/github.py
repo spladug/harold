@@ -247,6 +247,24 @@ class SalonDatabase(object):
                 except self.database.module.IntegrityError:
                     pass
 
+    @inlineCallbacks
+    def get_reviewers(self, repo, pr_id):
+        if not self.database:
+            returnValue([])
+
+        rows = yield self.database.runQuery(
+            "SELECT user FROM github_review_states WHERE "
+            "repository = :repo AND pull_request_id = :prid AND "
+            "user != (SELECT author FROM github_pull_requests "
+            "         WHERE repository = :repo AND id = :prid)",
+            {
+                "repo": repo,
+                "prid": pr_id,
+            }
+        )
+
+        returnValue([reviewer for reviewer, in rows])
+
 
 class Salon(object):
     messages_by_emoji = {
@@ -254,8 +272,8 @@ class Salon(object):
                   "%(repo)s#%(id)s (%(short_url)s)",
         ":nail_care:": "%(owner)s, %(user)s has finished this review pass on "
                        "pull request %(repo)s#%(id)s (%(short_url)s)",
-        ":haircut:": "%(owner)s is ready for further review of pull request "
-                     "%(repo)s#%(id)s (%(short_url)s)",
+        ":haircut:": "%(reviewers)s: %(owner)s is ready for further review of "
+                     "pull request %(repo)s#%(id)s (%(short_url)s)",
         ":eyeglasses:": "%(reviewers)s: %(user)s has requested your review "
                         "of %(repo)s#%(id)s (%(short_url)s)",
     }
@@ -319,21 +337,28 @@ class Salon(object):
         repository = self.config.repositories_by_name[repository_name]
         html_link = parsed["issue"]["pull_request"]["html_url"]
         short_url = yield self.shortener.make_short_url(html_link)
+        pr_id = int(parsed["issue"]["number"])
 
         message_info = dict(
             user=self.config.nick_by_user(parsed["sender"]["login"]),
             owner=self.config.nick_by_user(parsed["issue"]["user"]["login"]),
-            id=parsed["issue"]["number"],
+            id=str(pr_id),
             short_url=short_url,
             repo=repository_name,
         )
 
-        if emoji == ":eyeglasses:":
-            reviewers = _extract_reviewers(body)
-            if not reviewers:
-                return
-            reviewers = map(self.config.nick_by_user, reviewers)
-            message_info["reviewers"] = ", ".join(reviewers)
+        if "%(reviewers)s" in message:
+            if emoji == ":eyeglasses:":
+                reviewers = _extract_reviewers(body)
+                if not reviewers:
+                    return
+            else:
+                reviewers = yield self.database.get_reviewers(repository_name,
+                                                              pr_id)
+
+            mapped_reviewers = map(self.config.nick_by_user, reviewers)
+            message_info["reviewers"] = ", ".join(mapped_reviewers or
+                                                  ["(no one in particular)"])
 
         self.bot.send_message(repository.channel, message % message_info)
 
