@@ -146,6 +146,12 @@ class Alerter(object):
         """
         alert = self.alerts.get(tag)
 
+        if tag == '-a':
+            self.broadcast_from(sender, "acknowledged all")
+            for alert_tag in self.alerts.iterkeys():
+                self._register_mute(alert_tag, sender)
+            return
+
         if not alert:
             matching_tags = [alert_tag
                              for alert_tag in self.alerts.iterkeys()
