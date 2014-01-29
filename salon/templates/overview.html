@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% import "utils.html" as utils %}
+
+{% block content %}
+<div class="listing">
+  <h2>author's court</h2>
+
+  {% for state in ["fish", "eyeglasses", "nail_care"]: %}
+  <h3 class="state-{{ state }}">{{ state_meanings[state] }}</h3>
+
+    {% for pull_request in pull_requests[state]: %}
+    <div class="pull-request">
+      <ul class="review-states">
+        {% for user, state in pull_request.current_states().iteritems(): %}
+          <li title="@{{ user }}: {{ state_meanings[state] }}" class="state state-{{ state }}">:{{ state }}:</li>
+        {% endfor %}
+      </ul>
+
+      <h4>{{ utils.truncated_title(pull_request.title, pull_request.url) }}</h4>
+
+      <p class="tagline">
+        {{ utils.timestamp(pull_request.created) }}
+        &middot;
+        <a href="https://github.com/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+        &middot;
+        <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
+      </p>
+    </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+
+<div class="listing">
+  <h2>reviewers' court</h2>
+
+  {% for state in ["haircut", "unreviewed"]: %}
+  <h3 class="state-{{ state }}">{{ state_meanings[state] }}</h3>
+
+    {% for pull_request in pull_requests[state]: %}
+    <div class="pull-request">
+      <ul class="review-states">
+        {% for user, state in pull_request.current_states().iteritems(): %}
+          <li title="@{{ user }}: {{ state_meanings[state] }}" class="state state-{{ state }}">:{{ state }}:</li>
+        {% endfor %}
+      </ul>
+
+      <h4>{{ utils.truncated_title(pull_request.title, pull_request.url) }}</h4>
+
+      <p class="tagline">
+        {{ utils.timestamp(pull_request.created) }}
+        &middot;
+        <a href="https://github.com/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+        &middot;
+        <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
+      </p>
+    </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+{% endblock %}

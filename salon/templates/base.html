@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+  <head>
+    <title>the salon</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}">
+  </head>
+  <body>
+    <h1>harold's beauty salon</h1>
+
+    {% block content %}{% endblock %}
+  </body>
+</html>

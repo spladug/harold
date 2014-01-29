@@ -41,6 +41,30 @@ def inject_descriptions():
     }
 
 
+def _categorize_by_states(query):
+    pull_requests = collections.defaultdict(list)
+    for pull_request in query:
+        states = pull_request.current_states().values()
+
+        # no states at all is a completely separate issue
+        if not states:
+            pull_requests["eyeglasses"].append(pull_request)
+            continue
+
+        # now, take away the "haven't looked yet" people and see what's up
+        states = [state for state in states if state != "unreviewed"]
+        if not states:
+            verdict = "unreviewed"
+        elif all(state == "fish" for state in states):
+            verdict = "fish"
+        elif any(state == "nail_care" for state in states):
+            verdict = "nail_care"
+        else:
+            verdict = "haircut"
+        pull_requests[verdict].append(pull_request)
+    return pull_requests
+
+
 @app.route("/")
 def salon():
     github_username = internal_to_github(g.username).lower()
@@ -66,26 +90,7 @@ def salon():
             .filter(db.func.lower(PullRequest.author) == github_username)
             .order_by(db.desc(PullRequest.created))
     )
-    my_pulls = collections.defaultdict(list)
-    for pull_request in my_pulls_query:
-        states = pull_request.current_states().values()
-
-        # no states at all is a completely separate issue
-        if not states:
-            my_pulls["eyeglasses"].append(pull_request)
-            continue
-
-        # now, take away the "haven't looked yet" people and see what's up
-        states = [state for state in states if state != "unreviewed"]
-        if not states:
-            verdict = "unreviewed"
-        elif all(state == "fish" for state in states):
-            verdict = "fish"
-        elif any(state == "nail_care" for state in states):
-            verdict = "nail_care"
-        else:
-            verdict = "haircut"
-        my_pulls[verdict].append(pull_request)
+    my_pulls = _categorize_by_states(my_pulls_query)
 
     return render_template(
         "home.html",
@@ -93,4 +98,20 @@ def salon():
         internal_username=g.username,
         my_pulls=my_pulls,
         to_review=to_review,
+    )
+
+
+@app.route("/overview")
+def overview():
+    query = (
+        PullRequest.query
+            .options(db.subqueryload(PullRequest.states))
+            .filter(PullRequest.state == "open")
+            .order_by(db.desc(PullRequest.created))
+    )
+    pull_requests = _categorize_by_states(query)
+
+    return render_template(
+        "overview.html",
+        pull_requests=pull_requests,
     )
