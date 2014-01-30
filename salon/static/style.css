@@ -12,6 +12,7 @@ body {
 .state-nail_care { background-image: url(images/nail_care.png); }
 .state-unreviewed { background-image: url(images/see_no_evil.png); }
 .state-eyeglasses { background-image: url(images/eyeglasses.png); }
+.state-running { background-image: url(images/running.png); }
 
 h1 {
     font-family: "Alex Brush";

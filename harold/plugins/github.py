@@ -213,6 +213,8 @@ class SalonDatabase(object):
         state = "unreviewed"
         if is_author and ":haircut:" in body:
             state = "haircut"
+        elif ":running:" in body:
+            state = "running"
         elif ":nail_care:" in body:
             state = "nail_care"
         elif ":fish:" in body:
@@ -276,6 +278,9 @@ class Salon(object):
                      "pull request %(repo)s#%(id)s (%(short_url)s)",
         ":eyeglasses:": "%(reviewers)s: %(user)s has requested your review "
                         "of %(repo)s#%(id)s (%(short_url)s)",
+        ":running:": "%(owner)s, %(user)s is unable to review %(repo)s#%(id)s "
+                     "(%(short_url)s) at this time. Please summon a new "
+                     "reviewer.",
     }
 
     def __init__(self, config, bot, shortener, database):

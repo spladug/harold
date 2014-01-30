@@ -29,7 +29,7 @@ class PullRequest(db.Model):
                 haircut_seen = True
                 continue
 
-            if haircut_seen and state.state != "unreviewed":
+            if haircut_seen and state.state not in ("unreviewed", "running"):
                 new_state = "haircut"
             else:
                 new_state = state.state

@@ -36,6 +36,7 @@ def inject_descriptions():
             "haircut": "awaiting further review",
             "nail_care": "awaiting fixes",
             "unreviewed": "not reviewed yet",
+            "running": "unable to review",
             "eyeglasses": "awaiting reviewer summoning",
         },
     }
@@ -51,8 +52,9 @@ def _categorize_by_states(query):
             pull_requests["eyeglasses"].append(pull_request)
             continue
 
-        # now, take away the "haven't looked yet" people and see what's up
-        states = [state for state in states if state != "unreviewed"]
+        # now, take away the "nope" people and see what's up
+        states = [state for state in states
+                  if state not in ("unreviewed", "running")]
         if not states:
             verdict = "unreviewed"
         elif all(state == "fish" for state in states):
