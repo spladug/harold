@@ -257,6 +257,7 @@ class SalonDatabase(object):
         rows = yield self.database.runQuery(
             "SELECT user FROM github_review_states WHERE "
             "repository = :repo AND pull_request_id = :prid AND "
+            "state != 'running' AND "
             "user != (SELECT author FROM github_pull_requests "
             "         WHERE repository = :repo AND id = :prid)",
             {
