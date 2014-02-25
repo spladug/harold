@@ -15,7 +15,7 @@ _db_config = DatabaseConfig(config)
 app.config["SQLALCHEMY_DATABASE_URI"] = _db_config.connection_string
 
 _gh_config = GitHubConfig(config)
-app.config["GITHUB_USERNAMES_BY_NICK"] = {v: k for k, v in
+app.config["GITHUB_USERNAMES_BY_NICK"] = {v.lower(): k for k, v in
                                           _gh_config.nicks_by_user.iteritems()}
 
 

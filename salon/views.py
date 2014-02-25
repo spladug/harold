@@ -13,7 +13,8 @@ def _extract_cn_from_dn(dn):
 
 
 def internal_to_github(username):
-    return app.config["GITHUB_USERNAMES_BY_NICK"].get(username, username)
+    return app.config["GITHUB_USERNAMES_BY_NICK"].get(username.lower(),
+                                                      username)
 
 
 @app.before_request
