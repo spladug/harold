@@ -46,14 +46,16 @@ def inject_descriptions():
 def _categorize_by_states(query):
     pull_requests = collections.defaultdict(list)
     for pull_request in query:
-        states = pull_request.current_states().values()
+        states_by_reviewer = pull_request.current_states()
 
         # no states at all is a completely separate issue
-        if not states:
+        if not any(reviewer != pull_request.author
+                   for reviewer in states_by_reviewer):
             pull_requests["eyeglasses"].append(pull_request)
             continue
 
         # now, take away the "nope" people and see what's up
+        states = states_by_reviewer.values()
         states = [state for state in states
                   if state not in ("unreviewed", "running")]
         if not states:
