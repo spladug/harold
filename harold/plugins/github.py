@@ -325,6 +325,15 @@ class Salon(object):
                                           "user": submitter,
                                       })
 
+    def find_emoji(self, text):
+        for line in text.splitlines():
+            if line.startswith(">"):
+                continue
+            for emoji, message in self.messages_by_emoji.iteritems():
+                if emoji in line:
+                    return emoji, message
+        return None, None
+
     @inlineCallbacks
     def dispatch_comment(self, parsed):
         if parsed["action"] != "created":
@@ -333,10 +342,8 @@ class Salon(object):
         yield self.database.process_comment(parsed["comment"])
 
         body = parsed["comment"]["body"]
-        for emoji, message in self.messages_by_emoji.iteritems():
-            if emoji in body:
-                break
-        else:
+        emoji, message = self.find_emoji(body)
+        if not emoji:
             return
 
         repository_name = parsed["repository"]["full_name"]
