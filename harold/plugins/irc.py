@@ -164,6 +164,16 @@ class IRCBot(irc.IRCClient):
             self.describe(channel, "just had a hiccup.")
 
     def send_message(self, channel, message):
+        # get rid of any evil characters that might allow shenanigans
+        message = unicode(message)
+        message = message.translate({
+            ord("\r"): None,
+            ord("\n"): None,
+        })
+
+        # ensure the message isn't too long
+        message = message[:500]
+
         self.msg(channel, message.encode('utf-8'))
 
     def set_topic(self, channel, topic):
