@@ -62,7 +62,7 @@ def make_comments_url(repo):
     ))
 
 
-def fetch_paginated(url):
+def fetch_paginated(session, url):
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
     params = urlparse.parse_qs(query)
     params["per_page"] = 100
@@ -83,64 +83,65 @@ def fetch_paginated(url):
             yield item
 
 
-# config file is an expected argument
-bin_name = os.path.basename(sys.argv[0])
-if len(sys.argv) != 2:
-    print >> sys.stderr, "USAGE: %s INI_FILE" % bin_name
-    sys.exit(1)
+def main():
+    # config file is an expected argument
+    bin_name = os.path.basename(sys.argv[0])
+    if len(sys.argv) != 2:
+        print >> sys.stderr, "USAGE: %s INI_FILE" % bin_name
+        sys.exit(1)
 
-config_file = sys.argv[1]
-try:
-    config = HaroldConfiguration(config_file)
-except Exception as e:
-    print >> sys.stderr, "%s: failed to read config file %r: %s" % (
-        bin_name,
-        config_file,
-        e,
-    )
-    sys.exit(1)
+    config_file = sys.argv[1]
+    try:
+        config = HaroldConfiguration(config_file)
+    except Exception as e:
+        print >> sys.stderr, "%s: failed to read config file %r: %s" % (
+            bin_name,
+            config_file,
+            e,
+        )
+        sys.exit(1)
 
-# connect to db
-gh_config = GitHubConfig(config)
-db_config = DatabaseConfig(config)
-database = SalonDatabase(SynchronousDatabase(db_config))
+    # connect to db
+    gh_config = GitHubConfig(config)
+    db_config = DatabaseConfig(config)
+    database = SalonDatabase(SynchronousDatabase(db_config))
 
-# figure out which repos we care about
-repositories = gh_config.repositories_by_name.keys()
+    # figure out which repos we care about
+    repositories = gh_config.repositories_by_name.keys()
 
-if not repositories:
-    print "No repositories to sync!"
-    sys.exit(0)
+    if not repositories:
+        print "No repositories to sync!"
+        sys.exit(0)
 
-print "I will synchronize salon status for:"
-for repo in repositories:
-    print "  - " + repo
-print
+    print "I will synchronize salon status for:"
+    for repo in repositories:
+        print "  - " + repo
+    print
 
-# get auth credentials
-username = raw_input("GitHub Username: ")
-password = getpass.getpass("GitHub Password: ")
+    # get auth credentials
+    username = raw_input("GitHub Username: ")
+    password = getpass.getpass("GitHub Password: ")
 
-# set up an http session
-session = requests.session()
-session.auth = HTTPBasicAuth(username, password)
-session.verify = True
-session.headers["User-Agent"] = "Harold-by-@spladug"
+    # set up an http session
+    session = requests.session()
+    session.auth = HTTPBasicAuth(username, password)
+    session.verify = True
+    session.headers["User-Agent"] = "Harold-by-@spladug"
 
-# query and sync the database
-for repo in repositories:
-    print repo
+    # query and sync the database
+    for repo in repositories:
+        print repo
 
-    # synchronize pull requests
-    pull_requests = itertools.chain(
-        fetch_paginated(make_pullrequest_url(repo, "open")),
-        fetch_paginated(make_pullrequest_url(repo, "closed")),
-    )
-    for pull_request in pull_requests:
-        print "  %s#%s" % (repo, pull_request["number"])
-        database.process_pullrequest(pull_request, repository=repo)
+        # synchronize pull requests
+        pull_requests = itertools.chain(
+            fetch_paginated(session, make_pullrequest_url(repo, "open")),
+            fetch_paginated(session, make_pullrequest_url(repo, "closed")),
+        )
+        for pull_request in pull_requests:
+            print "  %s#%s" % (repo, pull_request["number"])
+            database.process_pullrequest(pull_request, repository=repo)
 
-    # synchronize comments
-    for comment in fetch_paginated(make_comments_url(repo)):
-        print "  %s comment #%d" % (repo, comment["id"])
-        database.process_comment(comment)
+        # synchronize comments
+        for comment in fetch_paginated(session, make_comments_url(repo)):
+            print "  %s comment #%d" % (repo, comment["id"])
+            database.process_comment(comment)

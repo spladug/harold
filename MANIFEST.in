@@ -1,0 +1,2 @@
+recursive-include salon/templates *
+recursive-include salon/static *

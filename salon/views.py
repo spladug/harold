@@ -2,7 +2,7 @@ import collections
 
 from flask import render_template, abort, request, g
 
-from salon import app
+from salon.app import app
 from salon.models import db, PullRequest, ReviewState
 
 
