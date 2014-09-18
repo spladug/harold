@@ -12,6 +12,19 @@ import sys
 from harold.plugins.github import REPOSITORY_PREFIX
 
 
+def yesno(prompt, default):
+    while True:
+        input = raw_input(prompt)
+        if not input:
+            return default
+
+        input = input.lower()
+        if input in ("y", "yes"):
+            return True
+        elif input in ("n", "no"):
+            return False
+
+
 def _make_hooks_url(repo, endpoint=None):
     path_fragments = ["/repos", repo, "hooks"]
     if endpoint:
@@ -58,6 +71,9 @@ def main():
         print "No repositories to register with!"
         sys.exit(0)
 
+    delete_unknown_hooks = yesno(
+        "Should I delete unknown webhooks? [Y/n] ", default=True)
+
     print "I will ensure webhooks are registered for:"
     for repo in repositories:
         print "  - " + repo
@@ -101,15 +117,28 @@ def main():
             if "harold" not in old_url:
                 continue
 
-            if (old_url != webhook_url or
-                hook["events"] != DESIRED_EVENTS or
-                found_valid_hook):
-                print "  Deleting non-conforming hook %d" % hook["id"]
+            delete_hook = False
+
+            if old_url == webhook_url:
+                if hook["events"] != DESIRED_EVENTS:
+                    print "  Deleting non-conforming hook %d" % hook["id"]
+                    delete_hook = True
+                elif found_valid_hook:
+                    print "  Deleting duplicate hook %d" % hook["id"]
+                    delete_hook = True
+                else:
+                    print "  Found existing valid hook (%d)" % hook["id"]
+                    found_valid_hook = True
+            else:
+                if delete_unknown_hooks:
+                    print "  Deleting unrecognized hook %d" % hook["id"]
+                    delete_hook = True
+                else:
+                    print "  Skipping unrecognized hook %d" % hook["id"]
+
+            if delete_hook:
                 response = session.delete(_make_hooks_url(repo, str(hook["id"])))
                 response.raise_for_status()
-            else:
-                print "  Found existing valid hook (%d)" % hook["id"]
-                found_valid_hook = True
 
         if found_valid_hook:
             continue
