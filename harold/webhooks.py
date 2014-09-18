@@ -1,15 +1,32 @@
 #!/usr/bin/python
 
-import ConfigParser
 import getpass
 import json
+import os
+import posixpath
+import socket
+import sys
+import urlparse
+
 import requests
 from requests.auth import HTTPBasicAuth
-import os
-import urlparse
-import sys
 
-from harold.plugins.github import REPOSITORY_PREFIX
+from harold.conf import HaroldConfiguration
+from harold.plugins.github import GitHubConfig
+from harold.plugins.http import HttpConfig
+
+
+def guess_local_address():
+    hostname = socket.gethostname()
+    fqdn = socket.getfqdn()
+    if fqdn != hostname:
+        return fqdn
+
+    # "open" a dgram connection to a public ip address to get our outbound ip
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.connect(("8.8.8.8", 53))
+    local_ip = sock.getsockname()[0]
+    return local_ip
 
 
 def yesno(prompt, default):
@@ -48,9 +65,7 @@ def main():
 
     config_file = sys.argv[1]
     try:
-        parser = ConfigParser.ConfigParser()
-        with open(config_file, "r") as f:
-            parser.readfp(f)
+        harold_config = HaroldConfiguration(config_file)
     except Exception as e:
         print >> sys.stderr, "%s: failed to read config file %r: %s" % (
             bin_name,
@@ -59,27 +74,34 @@ def main():
         )
         sys.exit(1)
 
-    # figure out which repos we care about
-    repositories = []
+    delete_unknown_hooks = yesno(
+        "Should I delete unknown webhooks? [Y/n] ", default=True)
+    print
 
-    for section in parser.sections():
-        if not section.startswith(REPOSITORY_PREFIX):
-            continue
-        repositories.append(section[len(REPOSITORY_PREFIX):])
+    # figure out which repos we care about
+    gh_config = GitHubConfig(harold_config)
+    repositories = gh_config.repositories_by_name.keys()
 
     if not repositories:
         print "No repositories to register with!"
         sys.exit(0)
 
-    delete_unknown_hooks = yesno(
-        "Should I delete unknown webhooks? [Y/n] ", default=True)
+    http_config = HttpConfig(harold_config)
+    root = urlparse.urlparse(http_config.public_root)
+    webhook_url = urlparse.urlunsplit((
+        root.scheme or "http",
+        root.netloc or guess_local_address(),
+        posixpath.join(root.path, "harold/github/" + http_config.secret),
+        None,
+        None
+    ))
+    print "Webhooks will be sent to %r" % webhook_url
 
+    print
     print "I will ensure webhooks are registered for:"
     for repo in repositories:
         print "  - " + repo
     print
-
-    netloc = raw_input("Harold GitHub Webhook Netloc: ")
 
     print
     print "Please enter a GitHub personal access token (found at Settings >>"
@@ -90,15 +112,6 @@ def main():
     session.auth = HTTPBasicAuth(token, "x-oauth-basic")
     session.verify = True
     session.headers["User-Agent"] = "Harold-by-@spladug"
-
-    http_secret = parser.get("harold:plugin:http", "secret")
-    webhook_url = urlparse.urlunsplit((
-        "http",
-        netloc,
-        "/harold/github/" + http_secret,
-        None,
-        None
-    ))
 
     DESIRED_EVENTS = ["push", "pull_request", "issue_comment"]
     for repo in repositories:

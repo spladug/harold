@@ -10,6 +10,7 @@ from harold.conf import PluginConfig, Option
 class HttpConfig(PluginConfig):
     endpoint = Option(str)
     secret = Option(str)
+    public_root = Option(str, default="")
 
 
 class ProtectedResource(resource.Resource):
