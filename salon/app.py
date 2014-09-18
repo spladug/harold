@@ -1,3 +1,4 @@
+import logging
 import os
 
 from flask import Flask
@@ -18,6 +19,9 @@ _gh_config = GitHubConfig(config)
 app.config["GITHUB_USERNAMES_BY_NICK"] = {v.lower(): k for k, v in
                                           _gh_config.nicks_by_user.iteritems()}
 
+
+# just output to console!
+logging.basicConfig()
 
 # register views
 import salon.views
