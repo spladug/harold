@@ -17,6 +17,7 @@ setup(
         "salon": [
             "Flask>=0.10",
             "Flask-SQLAlchemy>=0.16",
+            "requests>=1.0",
         ],
     },
     entry_points={

@@ -66,9 +66,11 @@ def main():
     netloc = raw_input("Harold GitHub Webhook Netloc: ")
     username = raw_input("GitHub Username: ")
     password = getpass.getpass("GitHub Password: ")
-    session = requests.session(auth=HTTPBasicAuth(username, password),
-                               verify=True
-                              )
+
+    session = requests.session()
+    session.auth = HTTPBasicAuth(username, password)
+    session.verify = True
+    session.headers["User-Agent"] = "Harold-by-@spladug"
 
     http_secret = parser.get("harold:plugin:http", "secret")
     webhook_url = urlparse.urlunsplit((
@@ -86,7 +88,7 @@ def main():
         # list existing hooks
         hooks_response = session.get(_make_hooks_url(repo))
         hooks_response.raise_for_status()
-        hooks = hooks_response.json
+        hooks = hooks_response.json()
 
         # determine if we're already configured / destroy non-conforming hooks
         found_valid_hook = False

@@ -76,10 +76,11 @@ def fetch_paginated(session, url):
         response = session.get(paginated_url)
         response.raise_for_status()
 
-        if not response.json:
+        payload = response.json()
+        if not payload:
             break
 
-        for item in response.json:
+        for item in payload:
             yield item
 
 
