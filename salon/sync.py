@@ -102,6 +102,14 @@ def main():
         )
         sys.exit(1)
 
+    # quickly load up the flask app to create the tables if not already done
+    print "Ensuring schema present..."
+    os.environ["HAROLD_CONFIG"] = config_file
+    import salon.app
+    import salon.models
+    print "done"
+    print
+
     # connect to db
     gh_config = GitHubConfig(config)
     db_config = DatabaseConfig(config)
