@@ -1,12 +1,14 @@
 from twisted.web import resource, server
 from twisted.application import internet
+from twisted.internet import reactor
+from twisted.internet.endpoints import serverFromString
 
 from harold.plugin import Plugin
 from harold.conf import PluginConfig, Option
 
 
 class HttpConfig(PluginConfig):
-    port = Option(int, default=80)
+    endpoint = Option(str)
     secret = Option(str)
 
 
@@ -32,8 +34,12 @@ def make_plugin(config):
     site = server.Site(root)
     site.displayTracebacks = False
 
+    endpoint = serverFromString(reactor, http_config.endpoint)
+    service = internet.StreamServerEndpointService(endpoint, site)
+
     plugin = Plugin()
     plugin.root = harold
     plugin.secret = http_config.secret
-    plugin.add_service(internet.TCPServer(http_config.port, site))
+    plugin.add_service(service)
+
     return plugin

@@ -25,9 +25,11 @@ options follows.
 The HTTP plugin provides a general-purpose service that other plugins can
 use to receive notifications. It doesn't do anything in itself.
 
-### port
+### endpoint
 
-The port to accept HTTP requests on.
+A Twisted endpoint description for the server. e.g. `tcp:8080`.
+
+See also: http://twistedmatrix.com/documents/13.1.0/api/twisted.internet.endpoints.serverFromString.html
 
 ### secret
 
