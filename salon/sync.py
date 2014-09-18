@@ -120,12 +120,14 @@ def main():
     print
 
     # get auth credentials
-    username = raw_input("GitHub Username: ")
-    password = getpass.getpass("GitHub Password: ")
+    print
+    print "Please enter a GitHub personal access token (found at Settings >>"
+    print "Applications on GitHub) with the repo scope authorized"
+    token = getpass.getpass("Token: ").strip()
 
     # set up an http session
     session = requests.session()
-    session.auth = HTTPBasicAuth(username, password)
+    session.auth = HTTPBasicAuth(token, "x-oauth-basic")
     session.verify = True
     session.headers["User-Agent"] = "Harold-by-@spladug"
 
