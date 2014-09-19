@@ -119,7 +119,7 @@ class DeployMonitor(object):
             if self.topic_to_restore:
                 topic = self.topic_to_restore
             else:
-                topic = "no active pushes (sorry, harold forgot the old topic)"
+                topic = "no active pushes - alert word: mayday mayday mayday"
         elif deploy_count == 1:
             deploy = self.deploys.values()[0]
             topic = ("<%s> %s started push at "
