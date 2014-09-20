@@ -7,6 +7,22 @@ from harold.plugin import Plugin
 from harold.conf import PluginConfig, Option
 
 
+def constant_time_compare(actual, expected):
+    """
+    Returns True if the two strings are equal, False otherwise
+
+    The time taken is dependent on the number of characters provided
+    instead of the number of characters that match.
+    """
+    actual_len = len(actual)
+    expected_len = len(expected)
+    result = actual_len ^ expected_len
+    if expected_len > 0:
+        for i in xrange(actual_len):
+            result |= ord(actual[i]) ^ ord(expected[i % expected_len])
+    return result == 0
+
+
 class HttpConfig(PluginConfig):
     endpoint = Option(str)
     secret = Option(str)
@@ -18,10 +34,10 @@ class ProtectedResource(resource.Resource):
         self.http = http
 
     def render_POST(self, request):
-        if request.postpath != [self.http.secret]:
-            return ""
-
-        self._handle_request(request)
+        if request.postpath:
+            secret = request.postpath.pop(-1)
+            if constant_time_compare(secret, self.http.secret):
+                self._handle_request(request)
 
         return ""
 
