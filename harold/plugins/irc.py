@@ -3,8 +3,6 @@
 import string
 import random
 import traceback
-import urllib
-import urlparse
 
 from twisted.words.protocols import irc
 from twisted.internet import protocol, ssl
@@ -15,7 +13,7 @@ from harold.dispatcher import Dispatcher
 from harold.plugins.http import ProtectedResource
 from harold.plugin import Plugin
 from harold.conf import PluginConfig, Option, tup
-from harold.utils import Event, extract_urls
+from harold.utils import Event
 
 
 class IrcConfig(PluginConfig):

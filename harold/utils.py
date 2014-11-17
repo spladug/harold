@@ -60,14 +60,3 @@ def pretty_and_accurate_time_span(delta):
     elif seconds > 1:
         parts.append("%d seconds" % seconds)
     return ", ".join(parts)
-
-
-url_finder = re.compile("https?://\S+")
-def extract_urls(text):
-    urls = []
-    for url in url_finder.findall(text):
-        try:
-            urls.append(urlparse.urlparse(url))
-        except ValueError:
-            pass
-    return urls
