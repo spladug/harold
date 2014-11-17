@@ -120,10 +120,20 @@ class PushDispatcher(object):
             })
         d.addCallback(onUrlShortened)
 
-    def dispatch(self, parsed):
-        repository_name = (parsed['repository']['owner']['name'] + '/' +
-                           parsed['repository']['name'])
-        repository = self.config.repositories_by_name[repository_name]
+    def _get_repository(self, parsed):
+        repository_name = parsed["repository"]["full_name"]
+        return self.config.repositories_by_name.get(repository_name)
+
+    def dispatch_ping(self, parsed):
+        repository = self._get_repository(parsed)
+        if repository:
+            self.bot.describe(
+                repository.channel, "is now watching %s" % repository.name)
+
+    def dispatch_push(self, parsed):
+        repository = self._get_repository(parsed)
+        if not repository:
+            return
         branch = parsed['ref'].split('/')[-1]
         commits = parsed['commits']
 
@@ -387,7 +397,8 @@ class GitHubListener(ProtectedResource):
         salon = Salon(config, bot, shortener, database)
 
         self.dispatchers = {
-            "push": push_dispatcher.dispatch,
+            "ping": push_dispatcher.dispatch_ping,
+            "push": push_dispatcher.dispatch_push,
             "pull_request": salon.dispatch_pullrequest,
             "issue_comment": salon.dispatch_comment,
         }
