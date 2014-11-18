@@ -112,7 +112,7 @@ class IRCBot(irc.IRCClient):
         command, args = (split[1].lower(), split[2:])
         fn = self.plugin.commands.get(command)
         if not fn:
-            self.describe(channel, "is just a simple bot. he has no "
+            self.describe(channel, "is just a simple bot. it has no "
                                  "idea what you mean!")
             return
 
