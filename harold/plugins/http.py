@@ -1,3 +1,7 @@
+import hashlib
+import hmac
+import urlparse
+
 from twisted.web import resource, server
 from twisted.application import internet
 from twisted.internet import reactor
@@ -26,7 +30,12 @@ def constant_time_compare(actual, expected):
 class HttpConfig(PluginConfig):
     endpoint = Option(str)
     secret = Option(str)
+    hmac_secret = Option(str, default=None)
     public_root = Option(str, default="")
+
+
+class AuthenticationError(Exception):
+    pass
 
 
 class ProtectedResource(resource.Resource):
@@ -34,10 +43,33 @@ class ProtectedResource(resource.Resource):
         self.http = http
 
     def render_POST(self, request):
-        if request.postpath:
-            secret = request.postpath.pop(-1)
-            if constant_time_compare(secret, self.http.secret):
-                self._handle_request(request)
+        try:
+            HEADER_NAME = "X-Hub-Signature"
+            has_signature = request.requestHeaders.hasHeader(HEADER_NAME)
+            if self.http.hmac_secret and has_signature:
+                # modern method: hmac of request body
+                body = request.content.read()
+                expected_hash = hmac.new(
+                    self.http.hmac_secret, body, hashlib.sha1).hexdigest()
+
+                header = request.requestHeaders.getRawHeaders(HEADER_NAME)[0]
+                hashes = urlparse.parse_qs(header)
+                actual_hash = hashes["sha1"][0]
+
+                if not constant_time_compare(expected_hash, actual_hash):
+                    raise AuthenticationError
+            elif request.postpath:
+                # old method: secret token appended to request url. deprecated.
+                secret = request.postpath.pop(-1)
+                if not constant_time_compare(secret, self.http.secret):
+                    raise AuthenticationError
+            else:
+                # no further authentication methods
+                raise AuthenticationError
+        except AuthenticationError:
+            request.setResponseCode(403)
+        else:
+            self._handle_request(request)
 
         return ""
 
@@ -57,6 +89,7 @@ def make_plugin(config):
     plugin = Plugin()
     plugin.root = harold
     plugin.secret = http_config.secret
+    plugin.hmac_secret = http_config.hmac_secret
     plugin.add_service(service)
 
     return plugin

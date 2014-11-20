@@ -36,6 +36,10 @@ See also: http://twistedmatrix.com/documents/13.1.0/api/twisted.internet.endpoin
 A URL-safe string that is known only by Harold and external services. Serves as
 authentication that notifications are from the intended source.
 
+### hmac\_secret
+
+A secret token used for HMAC hashing requests for authentication.
+
 ## irc
 
 A plugin which implements an IRC bot. Other plugins can use its APIs to

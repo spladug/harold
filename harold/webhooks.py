@@ -91,7 +91,7 @@ def main():
     webhook_url = urlparse.urlunsplit((
         root.scheme or "http",
         root.netloc or guess_local_address(),
-        posixpath.join(root.path, "harold/github/" + http_config.secret),
+        posixpath.join(root.path, "harold/github"),
         None,
         None
     ))
@@ -163,6 +163,7 @@ def main():
                 name="web",
                 config=dict(
                     url=webhook_url,
+                    secret=http_config.hmac_secret,
                 ),
                 events=DESIRED_EVENTS,
                 active=True,
