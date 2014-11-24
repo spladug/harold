@@ -21,7 +21,7 @@ def strip_resource_id(jid):
 
 class AlertsConfig(PluginConfig):
     recipients = Option(tup, default=[])
-    refractory_period = Option(int, default=300)
+    ttl = Option(int, default=300)
     max_mute_duration = Option(int, default=3600)
 
 
@@ -106,7 +106,7 @@ class Alerter(object):
         alert.count += 1
         alert.last_seen = datetime.datetime.now()
         alert.expirator = reactor.callLater(
-            self.config.refractory_period,
+            self.config.ttl,
             self._deregister_alert,
             tag
         )
