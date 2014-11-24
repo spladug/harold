@@ -223,17 +223,18 @@ class IrcPlugin(Plugin):
         self.commands[handler.__name__] = handler
 
 
-def make_plugin(config, http):
+def make_plugin(config, http=None):
     irc_config = IrcConfig(config)
     dispatcher = Dispatcher()
     channel_manager = ChannelManager(irc_config.channels, dispatcher)
 
     # add the http resources
-    http.root.putChild('message', MessageListener(http, dispatcher))
-    topic_root = resource.Resource()
-    http.root.putChild('topic', topic_root)
-    topic_root.putChild('set', SetTopicListener(http, dispatcher))
-    topic_root.putChild('restore', RestoreTopicListener(http, dispatcher))
+    if http:
+        http.root.putChild('message', MessageListener(http, dispatcher))
+        topic_root = resource.Resource()
+        http.root.putChild('topic', topic_root)
+        topic_root.putChild('set', SetTopicListener(http, dispatcher))
+        topic_root.putChild('restore', RestoreTopicListener(http, dispatcher))
 
     # configure the default irc commands
     p = IrcPlugin()
