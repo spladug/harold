@@ -3,6 +3,16 @@ import copy
 import inspect
 
 
+class PluginDependencyError(Exception):
+    def __init__(self, plugin, unsatisfied):
+        self.plugin = plugin
+        self.unsatisfied = unsatisfied
+
+    def __str__(self):
+        return ("the %r plugin requires the %r plugin but it is "
+                "not configured" % (self.plugin, self.unsatisfied))
+
+
 class Plugin(object):
     def __init__(self):
         self.services = []
@@ -56,6 +66,12 @@ def _topological_sort(dependencies):
 
 def load_plugins(config):
     plugins, dependencies, optional_deps = _import_plugin_modules(config)
+
+    # verify that we have the necessary plugins set up
+    for plugin_name, plugin_deps in dependencies.iteritems():
+        for dep in plugin_deps:
+            if dep not in plugins and dep != "config":
+                raise PluginDependencyError(plugin_name, dep)
 
     # move optional dependencies to real dependencies for topo sort if we
     # determine that they do indeed exist.
