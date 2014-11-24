@@ -105,5 +105,6 @@ def initialize(http, jabber, alerter):
 
     http.root.putChild("heartbeat", HeartbeatListener(http, watchdog))
 
-    jabber.register_command(watchdog.forget)
-    jabber.register_command(watchdog.watches)
+    if jabber:
+        jabber.register_command(watchdog.forget)
+        jabber.register_command(watchdog.watches)

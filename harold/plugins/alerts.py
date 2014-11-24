@@ -47,19 +47,21 @@ class Quiet(object):
 
 
 class Alerter(object):
-    def __init__(self, config, jabber_bot, smtp):
+    def __init__(self, config, jabber, smtp):
         self.config = config
         self.alerts = {}
         self.quiets = {}
         self.maintenance = None
 
-        self.jabber_bot = jabber_bot
-        self.smtp = smtp
+        senders = {}
+        if jabber:
+            self.jabber_bot = jabber.bot
+            senders["jabber"] = self._send_jabber
 
-        senders = {
-            'smtp': self._send_smtp,
-            'jabber': self._send_jabber,
-        }
+        if smtp:
+            self.smtp = smtp
+            senders["smtp"] = self._send_smtp
+
         self.recipients = []
         for recipient in self.config.recipients:
             medium, id = recipient.split(':', 1)
@@ -284,22 +286,23 @@ class Alerter(object):
             bot.sendMessage(sender, "There is no maintenance window active.")
 
 
-def make_plugin(config, http, jabber, smtp):
+def make_plugin(config, http, jabber=None, smtp=None):
     alerts_config = AlertsConfig(config)
-    alerter = Alerter(alerts_config, jabber.bot, smtp)
+    alerter = Alerter(alerts_config, jabber, smtp)
 
     # create the http resource
     http.root.putChild("alert", BroadcastAlertListener(http, alerter))
 
     # add commands
-    jabber.register_command(alerter.wall)
-    jabber.register_command(alerter.ack)
-    jabber.register_command(alerter.status)
-    jabber.register_command(alerter.stfu)
-    jabber.register_command(alerter.back)
-    jabber.register_command(alerter.who)
-    jabber.register_command(alerter.maint)
-    jabber.register_command(alerter.endmaint)
+    if jabber:
+        jabber.register_command(alerter.wall)
+        jabber.register_command(alerter.ack)
+        jabber.register_command(alerter.status)
+        jabber.register_command(alerter.stfu)
+        jabber.register_command(alerter.back)
+        jabber.register_command(alerter.who)
+        jabber.register_command(alerter.maint)
+        jabber.register_command(alerter.endmaint)
 
     # create the watchdog
     watchdog.initialize(http, jabber, alerter)
