@@ -37,8 +37,5 @@ setup(
         ("/etc/harold.d/", [
             "README.md",
         ]),
-        ("/var/www", [
-            "salon/misc/no-cert.html",
-        ]),
     ],
 )

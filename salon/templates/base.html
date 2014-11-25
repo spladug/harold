@@ -9,6 +9,13 @@
   <body>
     <h1>harold's beauty salon</h1>
 
+    {% if github_username: %}
+    <p class="username">
+      welcome, <a href="https://github.com/{{ github_username }}">@{{ github_username }}</a>, to the salon.
+      <a href="/logout" target="_top">log out</a>?
+    </p>
+    {% endif %}
+
     {% block content %}{% endblock %}
   </body>
 </html>

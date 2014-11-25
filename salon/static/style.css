@@ -23,6 +23,10 @@ h1 {
     padding: 10px 20px 0 0;
 }
 
+.username {
+    margin: 0 0 1.5em 0;
+}
+
 .listing {
     width: 600px;
     padding: 6px;
@@ -107,4 +111,23 @@ ul.review-states {
 
 ul.review-states li {
     display: inline-block;
+}
+
+.modal {
+    width: 600px;
+    border: 1px solid #ccc;
+    background: #eee;
+    padding: 6px;
+}
+
+.modal h2 {
+    color: black;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+}
+
+.modal.error {
+    border: 1px solid #fbb;
+    background: #fdd;
 }

@@ -32,6 +32,11 @@ License: BSD-3-clause
 Files: salon/static/images/*
 Copyright: 2011 Apple, Inc.
 
+Files: salon/flask_github.py
+Copyright: 2013 Cenk Altı
+License: MIT
+ See below.
+
 Files: salon/static/js/jquery.js
 Copyright: 2013 jQuery Foundation and other contributors
 License: MIT

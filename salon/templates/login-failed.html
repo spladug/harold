@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="modal error">
+  <h2>login failed</h2>
+
+  <p>login failed because: {{ reason }}</p>
+
+  <p><a href="/login" target="_top">try again?</a></p>
+</div>
+{% endblock %}
