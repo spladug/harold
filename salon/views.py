@@ -152,7 +152,7 @@ def authentication_required(fn):
             del session["timestamp"]
             return redirect("/login")
 
-        return fn(github_username)
+        return fn(github_username.lower())
     return authenticator
 
 
