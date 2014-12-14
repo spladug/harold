@@ -223,24 +223,6 @@ The maximum number of seconds an alert can be silenced by acknowledging it. If a
 remains live (see `refractory\_period`) for this amount of time, further instances will
 be broadcasted again. This prevents forgetting about an alert.
 
-## alarms
-
-The alarms plugin provides a way to send messages via IRC according to a specified schedule.
-Like the `postreceive` plugin, its header must be present but actual configuration takes place
-in alarm-specific sections with the prefix `harold:alarm:`.
-
-### channel
-
-IRC channel to send the message to.
-
-### message
-
-Message to send when alarm fires.
-
-### cronspec
-
-A cron-schedule of when the event fires.
-
 ## database
 
 The database plugin provides a simple twisted ADBAPI interface to a specified database for other
@@ -290,14 +272,3 @@ A SQLAlchemy-style connection string.
     [harold:repository:reddit/reddit.tv]
     channel = #reddit-dev
     format = %(author)s committed %(commit_id)s (%(url)s) to %(repository)s: %(summary)s
-
-    [harold:plugin:alarms]
-    [harold:alarm:wine]
-    channel = ##reddit-office
-    message = kemitche: It is now wine o'clock!
-    cronspec = 48 16 * * mon-fri
-    [harold:alarm:train]
-    channel = ##reddit-office
-    message = spladug, chromakode: It is now train o'clock!
-    cronspec = 58 16 * * mon-fri
-
