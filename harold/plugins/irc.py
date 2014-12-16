@@ -47,7 +47,7 @@ def version(irc, sender, channel):
 
 
 def who(irc, sender, channel, *args):
-    irc.describe(channel, "is a bot. see http://github.com/spladug/harold")
+    irc.describe(channel, "is a bot. see https://github.com/spladug/harold")
 
 
 def wanna(irc, sender, channel, *args):
