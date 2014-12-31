@@ -281,7 +281,7 @@ class SalonDatabase(object):
 
 class Salon(object):
     messages_by_emoji = {
-        ":fish:": "%(owner)s, %(user)s just ><))>'d your pull request "
+        ":fish:": "%(owner)s, %(user)s just :fish:'d your pull request "
                   "%(repo)s#%(id)s (%(short_url)s)",
         ":nail_care:": "%(owner)s, %(user)s has finished this review pass on "
                        "pull request %(repo)s#%(id)s (%(short_url)s)",
