@@ -133,7 +133,7 @@ class IRCBot(irc.IRCClient):
 
     def set_topic(self, channel, topic):
         self.topic_i_just_set = topic
-        self.topic(channel, topic)
+        self.topic(channel, topic.encode('utf-8'))
 
     def restore_topic(self, channel):
         self.set_topic(channel, self.topics[channel])
