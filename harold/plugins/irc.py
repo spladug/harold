@@ -89,19 +89,22 @@ class IRCBot(irc.IRCClient):
 
 
 class IRCBotFactory(protocol.ClientFactory):
+    protocol = IRCBot
+
     def __init__(self, plugin, config, dispatcher, channels):
         self.plugin = plugin
         self.config = config
         self.dispatcher = dispatcher
         self.channels = channels
 
-        class _ConfiguredBot(IRCBot):
-            nickname = self.config.nick
-            password = self.config.password
-            plugin = self.plugin
-            username = self.config.username
-            userserv_password = self.config.userserv_password
-        self.protocol = _ConfiguredBot
+    def buildProtocol(self, addr):
+        prot = protocol.ClientFactory.buildProtocol(self, addr)
+        prot.nickname = self.config.nick
+        prot.password = self.config.password
+        prot.plugin = self.plugin
+        prot.username = self.config.username
+        prot.userserv_password = self.config.userserv_password
+        return prot
 
     def clientConnectionFailed(self, connector, reason):
         connector.connect()
