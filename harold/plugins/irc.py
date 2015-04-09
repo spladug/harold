@@ -103,6 +103,9 @@ class IRCBotFactory(protocol.ClientFactory):
             userserv_password = self.config.userserv_password
         self.protocol = _ConfiguredBot
 
+    def clientConnectionFailed(self, connector, reason):
+        connector.connect()
+
     def clientConnectionLost(self, connector, reason):
         connector.connect()
 
