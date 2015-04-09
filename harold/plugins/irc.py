@@ -70,17 +70,12 @@ class IRCBot(irc.IRCClient):
             self.msg("userserv", "login %s %s" % (self.username,
                                                   self.userserv_password))
 
-        self.topics = {}
-        self.topic_i_just_set = None
-
         for channel in self.factory.channels:
             self.join(channel)
 
         self.factory.dispatcher.registerConsumer(self)
 
     def topicUpdated(self, user, channel, topic):
-        if topic != self.topic_i_just_set:
-            self.topics[channel] = topic
         self.factory.plugin.topicUpdated(user, channel, topic)
 
     def connectionLost(self, *args, **kwargs):
@@ -132,11 +127,7 @@ class IRCBot(irc.IRCClient):
         self.msg(channel, message.encode('utf-8'))
 
     def set_topic(self, channel, topic):
-        self.topic_i_just_set = topic
         self.topic(channel, topic.encode('utf-8'))
-
-    def restore_topic(self, channel):
-        self.set_topic(channel, self.topics[channel])
 
 
 class IRCBotFactory(protocol.ClientFactory):
@@ -185,18 +176,6 @@ class SetTopicListener(ProtectedResource):
         self.dispatcher.set_topic(channel, new_topic)
 
 
-class RestoreTopicListener(ProtectedResource):
-    isLeaf = True
-
-    def __init__(self, http, dispatcher):
-        ProtectedResource.__init__(self, http)
-        self.dispatcher = dispatcher
-
-    def _handle_request(self, request):
-        channel = request.args['channel'][0]
-        self.dispatcher.restore_topic(channel)
-
-
 class ChannelManager(object):
     def __init__(self, basic_channels, bot):
         self.bot = bot
@@ -232,7 +211,6 @@ def make_plugin(config, http=None):
         topic_root = resource.Resource()
         http.root.putChild('topic', topic_root)
         topic_root.putChild('set', SetTopicListener(http, dispatcher))
-        topic_root.putChild('restore', RestoreTopicListener(http, dispatcher))
 
     # configure the default irc commands
     p = IrcPlugin()
