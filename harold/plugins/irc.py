@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import string
-import random
 import traceback
 
 from twisted.words.protocols import irc
@@ -25,7 +24,6 @@ class IrcConfig(PluginConfig):
     use_ssl = Option(bool, default=False)
     channels = Option(tup, default=[])
     userserv_password = Option(str, default=None)
-    parrot_channel = Option(str, default=None)
 
 
 def git_commit_id():
@@ -82,15 +80,6 @@ class IRCBot(irc.IRCClient):
         irc.IRCClient.connectionLost(self, *args, **kwargs)
         self.factory.dispatcher.deregisterConsumer(self)
 
-    def maybeParrotMessage(self, user, channel, msg):
-        fate = random.random()
-        if channel == self.parrot_channel and fate < .005:
-            parrotized = ' '.join(msg.split(' ')[-2:]) + ". squawk!"
-            self.msg(self.parrot_channel, parrotized)
-        elif channel == self.parrot_channel and fate < .0025:
-            self.msg(self.parrot_channel,
-                     "HERMOCRATES! A friend of Socrates! Bwaaak!")
-
     def privmsg(self, user, channel, msg):
         split = msg.split()
         if len(split) >= 2:
@@ -99,7 +88,6 @@ class IRCBot(irc.IRCClient):
             highlight = ""
 
         if not highlight.startswith(self.nickname):
-            self.maybeParrotMessage(user, channel, msg)
             return
 
         command, args = (split[1].lower(), split[2:])
@@ -143,7 +131,6 @@ class IRCBotFactory(protocol.ClientFactory):
             plugin = self.plugin
             username = self.config.username
             userserv_password = self.config.userserv_password
-            parrot_channel = self.config.parrot_channel
         self.protocol = _ConfiguredBot
 
     def clientConnectionLost(self, connector, reason):
