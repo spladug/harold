@@ -26,24 +26,6 @@ class IrcConfig(PluginConfig):
     userserv_password = Option(str, default=None)
 
 
-def git_commit_id():
-    from subprocess import Popen, PIPE
-
-    try:
-        result = Popen(["git", "rev-parse", "HEAD"], stdout=PIPE)
-        return result.communicate()[0][:8]
-    except:
-        return ""
-
-REVISION = git_commit_id()
-
-
-def version(irc, sender, channel):
-    nick = sender.partition('!')[0]
-    irc.send_message(channel, "%s, i am running git revision %s" % (nick,
-                                                                    REVISION))
-
-
 def who(irc, sender, channel, *args):
     irc.describe(channel, "is a bot. see https://github.com/spladug/harold")
 
@@ -60,7 +42,7 @@ def wanna(irc, sender, channel, *args):
 
 
 class IRCBot(irc.IRCClient):
-    realname = "Harold (%s)" % REVISION
+    realname = "Harold"
     lineRate = .25  # rate limit to 4 messages / second
 
     def signedOn(self):
@@ -201,7 +183,6 @@ def make_plugin(config, http=None):
 
     # configure the default irc commands
     p = IrcPlugin()
-    p.register_command(version)
     p.register_command(who)
     p.register_command(wanna)
 
