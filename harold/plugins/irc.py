@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import string
 import traceback
 
 from twisted.words.protocols import irc
@@ -28,17 +27,6 @@ class IrcConfig(PluginConfig):
 
 def who(irc, sender, channel, *args):
     irc.describe(channel, "is a bot. see https://github.com/spladug/harold")
-
-
-def wanna(irc, sender, channel, *args):
-    if args:
-        clean = args[0].translate(string.maketrans("", ""), string.punctuation)
-        if clean.lower() == "cracker":
-            irc.describe(channel, "squawks: yes!")
-        elif clean.lower() == "rram":
-            irc.describe(channel, "purrs.")
-        else:
-            irc.describe(channel, "flies away in disgust")
 
 
 class IRCBot(irc.IRCClient):
@@ -184,7 +172,6 @@ def make_plugin(config, http=None):
     # configure the default irc commands
     p = IrcPlugin()
     p.register_command(who)
-    p.register_command(wanna)
 
     # set up the IRC client
     irc_factory = IRCBotFactory(p, irc_config, dispatcher, channel_manager)
