@@ -65,8 +65,10 @@ class IRCBot(irc.IRCClient):
         if not fn:
             return
 
+        sender_nick = user.partition('!')[0]
+
         try:
-            fn(self, user, channel, *args)
+            fn(self, sender_nick, channel, *args)
         except:
             traceback.print_exc()
             self.describe(channel, "just had a hiccup.")

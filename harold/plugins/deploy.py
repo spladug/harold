@@ -86,10 +86,9 @@ class DeployMonitor(object):
             return
 
         reply = functools.partial(self.irc.bot.send_message, channel)
-        sender_nick = sender.partition('!')[0]
 
         if not self.deploys:
-            reply("%s, there are currently no active pushes." % sender_nick)
+            reply("%s, there are currently no active pushes." % sender)
 
         deploys = sorted(self.deploys.values(), key=lambda d: d.when)
         for d in deploys:
@@ -99,7 +98,7 @@ class DeployMonitor(object):
                 status = " (which is on %s -- %d%% done)" % (d.where, percent)
 
             reply('%s, %s started push "%s"%s at %s with args "%s". log: %s' %
-                  (sender_nick, d.who, d.id, status, d.when.strftime("%H:%M"),
+                  (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
                    d.args, d.log_path))
 
     def _topic_changed(self, user, channel, topic):
