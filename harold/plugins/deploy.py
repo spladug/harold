@@ -93,7 +93,7 @@ class DeployMonitor(object):
         reply = functools.partial(self.irc.bot.send_message, channel)
 
         if not self.deploys:
-            reply("%s, there are currently no active pushes." % sender)
+            reply("%s, there are currently no active deploys." % sender)
 
         deploys = sorted(self.deploys.values(), key=lambda d: d.when)
         for d in deploys:
@@ -102,7 +102,7 @@ class DeployMonitor(object):
                 percent = (float(d.completion) / d.host_count) * 100.0
                 status = " (which is on %s -- %d%% done)" % (d.where, percent)
 
-            reply('%s, %s started push "%s"%s at %s with args "%s". log: %s' %
+            reply('%s, %s started deploy "%s"%s at %s with args "%s". log: %s' %
                   (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
                    d.args, d.log_path))
 
@@ -266,7 +266,7 @@ class DeployMonitor(object):
 
         self._update_topic()
         self.irc.bot.send_message(self.config.channel,
-                                  '%s started push "%s" '
+                                  '%s started deploy "%s" '
                                   "with args %s" % (who, id, args))
 
     def onPushProgress(self, id, host, index):
@@ -291,7 +291,7 @@ class DeployMonitor(object):
             return
 
         self.irc.bot.send_message(self.config.channel,
-                                  """%s's push "%s" is %d%% complete.""" %
+                                  """%s's deploy "%s" is %d%% complete.""" %
                                   (deploy.who, id, deploy.quadrant * 25))
         deploy.quadrant += 1
 
@@ -303,7 +303,7 @@ class DeployMonitor(object):
 
         self.irc.bot.send_message(
             self.config.channel,
-            """%s's push "%s" complete. """
+            """%s's deploy "%s" complete. """
             "Took %s." % (who, id, pretty_and_accurate_time_span(duration))
         )
         self._update_topic()
@@ -315,7 +315,7 @@ class DeployMonitor(object):
 
         deploy.expirator.delay(self.config.deploy_ttl)
         self.irc.bot.send_message(self.config.channel,
-                                  ("""%s's push "%s" encountered """
+                                  ("""%s's deploy "%s" encountered """
                                    "an error: %s") %
                                   (deploy.who, id, error))
 
@@ -326,7 +326,7 @@ class DeployMonitor(object):
             return
 
         self.irc.bot.send_message(self.config.channel,
-                                  """%s's push "%s" aborted (%s)""" %
+                                  """%s's deploy "%s" aborted (%s)""" %
                                   (who, id, reason))
         self._update_topic()
 
