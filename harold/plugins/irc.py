@@ -11,7 +11,6 @@ from harold.dispatcher import Dispatcher
 from harold.plugins.http import ProtectedResource
 from harold.plugin import Plugin
 from harold.conf import PluginConfig, Option, tup
-from harold.utils import Event
 
 
 class IrcConfig(PluginConfig):
@@ -42,9 +41,6 @@ class IRCBot(irc.IRCClient):
             self.join(channel)
 
         self.factory.dispatcher.registerConsumer(self)
-
-    def topicUpdated(self, user, channel, topic):
-        self.factory.plugin.topicUpdated(user, channel, topic)
 
     def connectionLost(self, *args, **kwargs):
         irc.IRCClient.connectionLost(self, *args, **kwargs)
@@ -158,7 +154,6 @@ class ChannelManager(object):
 class IrcPlugin(Plugin):
     def __init__(self):
         self.commands = {}
-        self.topicUpdated = Event()
         super(IrcPlugin, self).__init__()
 
     def register_command(self, handler):

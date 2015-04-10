@@ -1,25 +1,3 @@
-import re
-import urlparse
-
-
-class Event(object):
-    """An event that can have an arbitrary number of listeners that get called
-    when the event fires."""
-    def __init__(self):
-        self.listeners = set()
-
-    def register_listener(self, callable):
-        self.listeners.add(callable)
-        return callable
-
-    def fire(self, *args, **kwargs):
-        for listener in self.listeners:
-            listener(*args, **kwargs)
-
-    __iadd__ = register_listener
-    __call__ = fire
-
-
 def pretty_time_span(delta):
     seconds = int(delta.total_seconds())
     minutes, seconds = divmod(seconds, 60)

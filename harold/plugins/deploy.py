@@ -77,8 +77,6 @@ class DeployMonitor(object):
         self.config = config
         self.irc = irc
         self.deploys = {}
-        self.topic_to_restore = None
-        self.irc.topicUpdated += self._topic_changed
 
     def status(self, irc, sender, channel):
         "Get the status of currently running deploys."
@@ -101,24 +99,12 @@ class DeployMonitor(object):
                   (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
                    d.args, d.log_path))
 
-    def _topic_changed(self, user, channel, topic):
-        if channel != self.config.channel:
-            return
-
-        if topic.startswith("<%s>" % self.irc.config.nick):
-            return
-
-        self.topic_to_restore = topic
-
     def _update_topic(self):
         nick = self.irc.config.nick
         deploy_count = len(self.deploys)
 
         if deploy_count == 0:
-            if self.topic_to_restore:
-                topic = self.topic_to_restore
-            else:
-                topic = "no active pushes (sorry, harold forgot the old topic)"
+            topic = "no active pushes"
         elif deploy_count == 1:
             deploy = self.deploys.values()[0]
             topic = ("<%s> %s started push at "
