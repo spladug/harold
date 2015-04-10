@@ -2,7 +2,7 @@ import datetime
 import functools
 
 from twisted.web import resource
-from twisted.internet import reactor
+from twisted.internet import reactor, task
 
 from harold.plugins.http import ProtectedResource
 from harold.conf import PluginConfig, Option
@@ -77,6 +77,13 @@ class DeployMonitor(object):
         self.config = config
         self.irc = irc
         self.deploys = {}
+        self.current_hold = None
+        self.current_topic = ""
+        self.current_conch = ""
+        self.queue = []
+
+        looper = task.LoopingCall(self._update_topic)
+        looper.start(10)
 
     def status(self, irc, sender, channel):
         "Get the status of currently running deploys."
@@ -99,25 +106,137 @@ class DeployMonitor(object):
                   (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
                    d.args, d.log_path))
 
+    def hold(self, irc, sender, channel):
+        if channel != self.config.channel:
+            return
+
+        if self.current_hold:
+            self.irc.bot.send_message(
+                channel, "%s, deploys are already on hold" % sender)
+            return
+
+        self.current_hold = sender
+        self._update_topic()
+
+    def unhold(self, irc, sender, channel):
+        if channel != self.config.channel:
+            return
+
+        if not self.current_hold:
+            self.irc.bot.send_message(
+                channel, "%s, deploys are not on hold" % sender)
+            return
+
+        self.current_hold = None
+        self._update_topic()
+
+    def acquire(self, irc, sender, channel):
+        if channel != self.config.channel:
+            return
+
+        if sender in self.queue:
+            self.irc.bot.send_message(
+                channel, "%s, you are already in the queue" % sender)
+            return
+
+        self.queue.append(sender)
+        self._update_topic()
+        self._update_conch()
+
+    def _update_conch(self):
+        if self.queue:
+            new_conch = self.queue[0]
+            if new_conch != self.current_conch:
+                self.irc.bot.send_message(self.config.channel,
+                    "%s, you have the :conch:" % new_conch)
+        else:
+            new_conch = None
+        self.current_conch = new_conch
+
+    def release(self, irc, sender, channel):
+        if channel != self.config.channel:
+            return
+
+        if sender not in self.queue:
+            self.irc.bot.send_message(
+                channel, "%s, you are not in the queue" % sender)
+            return
+
+        self.queue.remove(sender)
+        self._update_conch()
+        self._update_topic()
+
+    def jump(self, irc, sender, channel):
+        if channel != self.config.channel:
+            return
+
+        if self.queue and self.queue[0] == sender:
+            self.irc.bot.send_message(
+                channel, "%s, you already have the :conch:" % sender)
+            return
+
+        if sender in self.queue:
+            self.queue.remove(sender)
+        self.queue.insert(0, sender)
+        self._update_conch()
+        self._update_topic()
+
+    def kick(self, irc, sender, channel, user):
+        if channel != self.config.channel:
+            return
+
+        if user not in self.queue:
+            self.irc.bot.send_message(
+                channel, "%s, %s is not in the queue" % (sender, user))
+            return
+
+        self.queue.remove(user)
+        self._update_conch()
+        self._update_topic()
+
+    def is_working_hours(self):
+        date = datetime.date.today()
+        time = datetime.datetime.now().time()
+
+        # never before 9am
+        if time < datetime.time(9, 0):
+            return False
+
+        if date.weekday() in (0, 1, 2, 3):
+            # monday through thursday, 9-5
+            return time < datetime.time(17, 0)
+        elif date.weekday() == 4:
+            # friday, 9-12
+            return time < datetime.time(12, 0)
+        else:
+            # no work on the weekend
+            return False
+
     def _update_topic(self):
-        nick = self.irc.config.nick
         deploy_count = len(self.deploys)
 
         if deploy_count == 0:
-            topic = "no active pushes"
+            if self.current_hold:
+                status = ":no_entry_sign: deploys ON HOLD by request of %s" % self.current_hold
+            elif not self.is_working_hours():
+                status = ":warning: after hours, emergency deploys only"
+            else:
+                status = ":thumbsup: OK for deploy"
         elif deploy_count == 1:
             deploy = self.deploys.values()[0]
-            topic = ("<%s> %s started push at "
-                     "%s with args: %s" %
-                     (nick, deploy.who, deploy.when.strftime("%H:%M"),
-                                            deploy.args))
+            status = ":hourglass: %s is deploying" % deploy.who
         else:  # > 1
-            earliest = min(d.when for d in self.deploys.itervalues())
-            topic = ('<%s> %d pushes running (earliest '
-                     'started at %s). check "status".' %
-                     (nick, deploy_count, earliest.strftime("%H:%M")))
+            status = ":hourglass: %d deploys in progress" % deploy_count
 
-        self.irc.bot.set_topic(self.config.channel, topic)
+        new_topic = " | ".join((
+            status,
+            "%s has the :conch:" % (self.queue[0] if self.queue else "no one"),
+            "queue: %s" % (", ".join(self.queue[1:]) or "<empty>"),
+        ))
+
+        if new_topic != self.current_topic:
+            self.irc.bot.set_topic(self.config.channel, new_topic)
+            self.current_topic = new_topic
 
     def _remove_deploy(self, id):
         deploy = self.deploys.get(id)
@@ -230,3 +349,9 @@ def make_plugin(config, http, irc):
 
     # register our irc commands
     irc.register_command(monitor.status)
+    irc.register_command(monitor.hold)
+    irc.register_command(monitor.unhold)
+    irc.register_command(monitor.acquire)
+    irc.register_command(monitor.release)
+    irc.register_command(monitor.jump)
+    irc.register_command(monitor.kick)
