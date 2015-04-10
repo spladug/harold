@@ -47,27 +47,8 @@ class IRCBot(irc.IRCClient):
         self.factory.dispatcher.deregisterConsumer(self)
 
     def privmsg(self, user, channel, msg):
-        split = msg.split()
-        if len(split) >= 2:
-            highlight = split[0].lower()
-        else:
-            highlight = ""
-
-        if not highlight.startswith(self.nickname):
-            return
-
-        command, args = (split[1].lower(), split[2:])
-        fn = self.plugin.commands.get(command)
-        if not fn:
-            return
-
         sender_nick = user.partition('!')[0]
-
-        try:
-            fn(self, sender_nick, channel, *args)
-        except:
-            traceback.print_exc()
-            self.describe(channel, "just had a hiccup.")
+        self.factory.onMessageReceived(sender_nick, channel, msg)
 
     def send_message(self, channel, message):
         # get rid of any evil characters that might allow shenanigans
@@ -99,7 +80,6 @@ class IRCBotFactory(protocol.ClientFactory):
         prot = protocol.ClientFactory.buildProtocol(self, addr)
         prot.nickname = self.config.nick
         prot.password = self.config.password
-        prot.plugin = self.plugin
         prot.username = self.config.username
         prot.userserv_password = self.config.userserv_password
         return prot
@@ -109,6 +89,9 @@ class IRCBotFactory(protocol.ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         connector.connect()
+
+    def onMessageReceived(self, sender_nick, channel, msg):
+        self.plugin.onMessageReceived(sender_nick, channel, msg)
 
 
 class MessageListener(ProtectedResource):
@@ -158,6 +141,27 @@ class IrcPlugin(Plugin):
 
     def register_command(self, handler):
         self.commands[handler.__name__] = handler
+
+    def onMessageReceived(self, sender_nick, channel, msg):
+        split = msg.split()
+        if len(split) >= 2:
+            highlight = split[0].lower()
+        else:
+            highlight = ""
+
+        if not highlight.startswith(self.config.nick):
+            return
+
+        command, args = (split[1].lower(), split[2:])
+        fn = self.commands.get(command)
+        if not fn:
+            return
+
+        try:
+            fn(self.bot, sender_nick, channel, *args)
+        except:
+            traceback.print_exc()
+            self.bot.describe(channel, "just had a hiccup.")
 
 
 def make_plugin(config, http=None):
