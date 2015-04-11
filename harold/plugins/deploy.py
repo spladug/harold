@@ -78,9 +78,9 @@ class DeployMonitor(object):
         self.irc = irc
         self.deploys = {}
         self.current_hold = None
-        self.current_topic = ""
         self.current_conch = ""
         self.queue = []
+        self.current_topic = self._make_topic()
 
         looper = task.LoopingCall(self._update_topic)
         looper.start(10)
@@ -194,6 +194,11 @@ class DeployMonitor(object):
         self._update_conch()
         self._update_topic()
 
+    def refresh(self, irc, sender, channel):
+        if channel != self.config.channel:
+            return
+        self._update_topic(force=True)
+
     def is_working_hours(self):
         date = datetime.date.today()
         time = datetime.datetime.now().time()
@@ -212,7 +217,7 @@ class DeployMonitor(object):
             # no work on the weekend
             return False
 
-    def _update_topic(self):
+    def _make_topic(self):
         deploy_count = len(self.deploys)
 
         if deploy_count == 0:
@@ -228,13 +233,15 @@ class DeployMonitor(object):
         else:  # > 1
             status = ":hourglass: %d deploys in progress" % deploy_count
 
-        new_topic = " | ".join((
+        return " | ".join((
             status,
             "%s has the :shell:" % (self.queue[0] if self.queue else "no one"),
             "queue: %s" % (", ".join(self.queue[1:]) or "<empty>"),
         ))
 
-        if new_topic != self.current_topic:
+    def _update_topic(self, force=False):
+        new_topic = self._make_topic()
+        if force or new_topic != self.current_topic:
             self.irc.bot.set_topic(self.config.channel, new_topic)
             self.current_topic = new_topic
 
@@ -355,3 +362,4 @@ def make_plugin(config, http, irc):
     irc.register_command(monitor.release)
     irc.register_command(monitor.jump)
     irc.register_command(monitor.kick)
+    irc.register_command(monitor.refresh)
