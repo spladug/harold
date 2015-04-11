@@ -148,7 +148,7 @@ class DeployMonitor(object):
             new_conch = self.queue[0]
             if new_conch != self.current_conch:
                 self.irc.bot.send_message(self.config.channel,
-                    "%s, you have the :conch:" % new_conch)
+                    "%s, you have the :shell:" % new_conch)
         else:
             new_conch = None
         self.current_conch = new_conch
@@ -172,7 +172,7 @@ class DeployMonitor(object):
 
         if self.queue and self.queue[0] == sender:
             self.irc.bot.send_message(
-                channel, "%s, you already have the :conch:" % sender)
+                channel, "%s, you already have the :shell:" % sender)
             return
 
         if sender in self.queue:
@@ -230,7 +230,7 @@ class DeployMonitor(object):
 
         new_topic = " | ".join((
             status,
-            "%s has the :conch:" % (self.queue[0] if self.queue else "no one"),
+            "%s has the :shell:" % (self.queue[0] if self.queue else "no one"),
             "queue: %s" % (", ".join(self.queue[1:]) or "<empty>"),
         ))
 
