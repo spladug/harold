@@ -143,6 +143,13 @@ class DeployMonitor(object):
         self._update_topic()
         self._update_conch()
 
+    def aquire(self, irc, sender, channel):
+        if channel != self.config.channel:
+            return
+
+        self.irc.bot.send_message(channel, "what's a quire?")
+        self.acquire(irc, sender, channel)
+
     def _update_conch(self):
         if self.queue:
             new_conch = self.queue[0]
@@ -359,6 +366,7 @@ def make_plugin(config, http, irc):
     irc.register_command(monitor.hold)
     irc.register_command(monitor.unhold)
     irc.register_command(monitor.acquire)
+    irc.register_command(monitor.aquire)
     irc.register_command(monitor.release)
     irc.register_command(monitor.jump)
     irc.register_command(monitor.kick)
