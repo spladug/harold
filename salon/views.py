@@ -139,7 +139,7 @@ def authorized(oauth_token):
 
 def authentication_required(fn):
     @functools.wraps(fn)
-    def authenticator():
+    def authenticator(*args, **kwargs):
         github_username = session.get("username")
 
         if not github_username:
@@ -152,13 +152,17 @@ def authentication_required(fn):
             del session["timestamp"]
             return redirect("/login")
 
-        return fn(github_username.lower())
+        return fn(github_username.lower(), *args, **kwargs)
     return authenticator
 
 
 @app.route("/")
+@app.route("/user/<override_username>")
 @authentication_required
-def salon(github_username):
+def salon(github_username, override_username=None):
+    if override_username:
+        github_username = override_username.lower()
+
     to_review_query = (
         PullRequest.query
             .options(db.subqueryload(PullRequest.states))
