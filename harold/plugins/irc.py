@@ -107,8 +107,12 @@ class MessageListener(ProtectedResource):
 
     def _handle_request(self, request):
         channel = request.args['channel'][0]
-        message = unicode(request.args['message'][0], 'utf-8')
-        self.dispatcher.send_message(channel, message)
+        try:
+            message = unicode(request.args['message'][0], 'utf-8')
+        except UnicodeDecodeError:
+            return
+        else:
+            self.dispatcher.send_message(channel, message)
 
 
 class SetTopicListener(ProtectedResource):
