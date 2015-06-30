@@ -217,9 +217,6 @@ class DeployMonitor(object):
         if date.weekday() in (0, 1, 2, 3):
             # monday through thursday, 9-5
             return time < datetime.time(17, 0)
-        elif date.weekday() == 4:
-            # friday, 9-12
-            return time < datetime.time(12, 0)
         else:
             # no work on the weekend
             return False
