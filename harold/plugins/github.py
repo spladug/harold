@@ -227,7 +227,7 @@ class SalonDatabase(object):
             state = "running"
         elif ":nail_care:" in body:
             state = "nail_care"
-        elif ":fish:" in body:
+        elif ":fish:" or ":tropical_fish:" or ":sushi:" in body:
             state = "fish"
 
         should_overwrite = (state != "unreviewed")
