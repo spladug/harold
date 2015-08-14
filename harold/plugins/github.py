@@ -223,7 +223,8 @@ class SalonDatabase(object):
         state = "unreviewed"
         if is_author and ":haircut:" in body:
             state = "haircut"
-        elif ":running:" in body:
+        elif (":running:" in body or
+              ":runner:" in body):
             state = "running"
         elif ":nail_care:" in body:
             state = "nail_care"
