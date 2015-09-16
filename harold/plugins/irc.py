@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
+import os
 import traceback
 
 from twisted.words.protocols import irc
-from twisted.internet import protocol, ssl
+from twisted.internet import protocol, ssl, reactor, task
 from twisted.application import internet
 from twisted.web import resource
 
@@ -22,6 +23,7 @@ class IrcConfig(PluginConfig):
     use_ssl = Option(bool, default=False)
     channels = Option(tup, default=[])
     userserv_password = Option(str, default=None)
+    heartbeat_channel = Option(str)
 
 
 def help(irc, sender, channel, *args):
@@ -36,6 +38,11 @@ class IRCBot(irc.IRCClient):
     realname = "Harold"
     lineRate = .25  # rate limit to 4 messages / second
 
+    def connectionMade(self, *args, **kwargs):
+        self.watchdog = None
+        self.scheduleWatchdog()
+        irc.IRCClient.connectionMade(self, *args, **kwargs)
+
     def signedOn(self):
         if self.userserv_password:
             self.msg("userserv", "login %s %s" % (self.username,
@@ -46,13 +53,21 @@ class IRCBot(irc.IRCClient):
 
         self.factory.dispatcher.registerConsumer(self)
 
+        self.loop = task.LoopingCall(self.sendHeartbeat)
+        self.loop.start(10)
+
     def connectionLost(self, *args, **kwargs):
         irc.IRCClient.connectionLost(self, *args, **kwargs)
         self.factory.dispatcher.deregisterConsumer(self)
 
+        self.cancelWatchdog()
+        if self.loop.running:
+            self.loop.stop()
+
     def privmsg(self, user, channel, msg):
         sender_nick = user.partition('!')[0]
         self.factory.onMessageReceived(sender_nick, channel, msg)
+        self.scheduleWatchdog()
 
     def send_message(self, channel, message):
         # get rid of any evil characters that might allow shenanigans
@@ -70,6 +85,21 @@ class IRCBot(irc.IRCClient):
     def set_topic(self, channel, topic):
         self.topic(channel, topic.encode('utf-8'))
 
+    def scheduleWatchdog(self):
+        self.cancelWatchdog()
+        self.watchdog = reactor.callLater(30, self.transport.loseConnection)
+
+    def cancelWatchdog(self):
+        if self.watchdog:
+            if self.watchdog.active():
+                self.watchdog.cancel()
+            self.watchdog = None
+
+    def sendHeartbeat(self):
+        name = os.environ.get("name", "unknown")
+        self.send_message(self.heartbeat_channel, ":heart: from %s" % name)
+
+
 
 class IRCBotFactory(protocol.ClientFactory):
     protocol = IRCBot
@@ -86,6 +116,7 @@ class IRCBotFactory(protocol.ClientFactory):
         prot.password = self.config.password
         prot.username = self.config.username
         prot.userserv_password = self.config.userserv_password
+        prot.heartbeat_channel = self.config.heartbeat_channel
         return prot
 
     def clientConnectionFailed(self, connector, reason):
