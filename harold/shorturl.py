@@ -37,7 +37,7 @@ class UrlShortener(object):
     def _make_short_url(self, long_url):
         self.request_in_flight = True
 
-        api_uri = "http://git.io/"
+        api_uri = "https://git.io/"
         encoded = urllib.urlencode({"url": long_url})
         body_producer = StringProducer(encoded)
 
