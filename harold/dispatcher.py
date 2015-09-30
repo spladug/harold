@@ -13,7 +13,6 @@ class Dispatcher(object):
         self.queues = []
 
     def deregisterConsumer(self, consumer):
-        assert self.consumer is not None
         self.consumer = None
 
     def _apply(self, fn_name, args, kwargs):
