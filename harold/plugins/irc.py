@@ -61,7 +61,7 @@ class IRCBot(irc.IRCClient):
         self.factory.dispatcher.deregisterConsumer(self)
 
         self.cancelWatchdog()
-        if self.loop.running:
+        if getattr(self, "loop", None) and self.loop.running:
             self.loop.stop()
 
     def privmsg(self, user, channel, msg):
