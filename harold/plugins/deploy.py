@@ -210,13 +210,13 @@ class DeployMonitor(object):
         date = datetime.date.today()
         time = datetime.datetime.now().time()
 
-        # never before 9am
+        # always after 9am
         if time < datetime.time(9, 0):
             return False
 
         if date.weekday() in (0, 1, 2, 3):
-            # monday through thursday, 9-5
-            return time < datetime.time(17, 0)
+            # monday through thursday, before 4pm
+            return time < datetime.time(16, 0)
         else:
             # no work on the weekend
             return False
