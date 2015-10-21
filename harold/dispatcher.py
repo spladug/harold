@@ -1,4 +1,6 @@
 class Dispatcher(object):
+    __slots__ = ("consumer", "queue")
+
     def __init__(self):
         self.consumer = None
         self.queue = []
@@ -10,7 +12,7 @@ class Dispatcher(object):
         # throw all the queued events at the consumer
         for fn_name, args, kwargs in self.queue:
             self._apply(fn_name, args, kwargs)
-        self.queues = []
+        self.queue = []
 
     def deregisterConsumer(self, consumer):
         self.consumer = None
