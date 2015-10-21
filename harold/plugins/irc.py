@@ -36,7 +36,7 @@ def who(irc, sender, channel, *args):
 
 class IRCBot(irc.IRCClient):
     realname = "Harold"
-    lineRate = .25  # rate limit to 4 messages / second
+    lineRate = 1  # rate limit to 1 message / second
     heartbeatInterval = 30
     maxOutstandingHeartbeats = 3
 
