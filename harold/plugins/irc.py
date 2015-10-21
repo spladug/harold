@@ -52,6 +52,9 @@ class IRCBot(irc.IRCClient):
         if self.outstanding_heartbeats > self.maxOutstandingHeartbeats :
             print "Too many heartbeats missed. Killing connection."
             self.transport.loseConnection()
+            return
+        else:
+            print "Sending PING. %d heartbeats outstanding." % self.outstanding_heartbeats
 
         irc.IRCClient._sendHeartbeat(self)
         self.outstanding_heartbeats += 1
@@ -69,6 +72,7 @@ class IRCBot(irc.IRCClient):
         self.factory.dispatcher.registerConsumer(self)
 
     def connectionLost(self, *args, **kwargs):
+        print "Connection lost."
         irc.IRCClient.connectionLost(self, *args, **kwargs)
         self.factory.dispatcher.deregisterConsumer(self)
 
