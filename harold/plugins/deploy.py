@@ -206,20 +206,25 @@ class DeployMonitor(object):
             return
         self._update_topic(force=True)
 
-    def is_working_hours(self):
+    def current_time_status(self):
         date = datetime.date.today()
         time = datetime.datetime.now().time()
 
         # always after 9am
         if time < datetime.time(9, 0):
-            return False
+            return "after_hours"
 
         if date.weekday() in (0, 1, 2, 3):
             # monday through thursday, before 4pm
-            return time < datetime.time(16, 0)
+            if time < datetime.time(16, 0):
+                return "work_time"
+            elif time < datetime.time(17, 0):
+                return "cleanup_time"
+            else:
+                return "after_hours"
         else:
             # no work on the weekend
-            return False
+            return "after_hours"
 
     def _make_topic(self):
         deploy_count = len(self.deploys)
@@ -227,10 +232,15 @@ class DeployMonitor(object):
         if deploy_count == 0:
             if self.current_hold:
                 status = ":no_entry_sign: deploys ON HOLD by request of %s" % self.current_hold
-            elif not self.is_working_hours():
-                status = ":warning: after hours, emergency deploys only"
             else:
-                status = ":thumbsup: OK for deploy"
+                time_status = self.current_time_status()
+
+                if time_status == "work_time":
+                    status = ":office: working hours, normal deploy rules apply"
+                elif time_status == "cleanup_time":
+                    status = ":hand: it's late, fixup/polish deploys only"
+                else:
+                    status = ":warning: after hours, emergency deploys only"
         elif deploy_count == 1:
             deploy = self.deploys.values()[0]
             status = ":hourglass: %s is deploying" % deploy.who
