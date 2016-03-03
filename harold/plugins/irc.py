@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import time
+import os
 import traceback
 
 from twisted.words.protocols import irc
@@ -28,6 +28,10 @@ class IrcConfig(PluginConfig):
 
 def who(irc, sender, channel, *args):
     irc.describe(channel, "is a bot. see https://github.com/spladug/harold")
+
+
+def debug(irc, sender, channel, *args):
+    irc.describe(channel, "instance `%s` is up!" % os.environ.get("name", "main"))
 
 
 class IRCBot(irc.IRCClient):
@@ -211,6 +215,7 @@ def make_plugin(config, http=None):
     # configure the default irc commands
     p = IrcPlugin()
     p.register_command(who)
+    p.register_command(debug)
 
     # set up the IRC client
     irc_factory = IRCBotFactory(p, irc_config, dispatcher, channel_manager)
