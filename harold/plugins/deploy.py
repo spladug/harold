@@ -12,6 +12,7 @@ from harold.utils import pretty_and_accurate_time_span
 class DeployConfig(PluginConfig):
     channel = Option(str)
     deploy_ttl = Option(int)
+    conch_emoji = Option(str, default=":shell:")
 
 
 class DeployListener(ProtectedResource):
@@ -164,7 +165,7 @@ class DeployMonitor(object):
             new_conch = self.queue[0]
             if new_conch != self.current_conch:
                 self.irc.bot.send_message(self.config.channel,
-                    "%s, you have the :shell:" % new_conch)
+                    "%s, you have the %s" % (new_conch, self.config.conch_emoji))
         else:
             new_conch = None
         self.current_conch = new_conch
@@ -188,7 +189,7 @@ class DeployMonitor(object):
 
         if self.queue and self.queue[0] == sender:
             self.irc.bot.send_message(
-                channel, "%s, you already have the :shell:" % sender)
+                channel, "%s, you already have the %s" % (sender, self.config.conch_emoji))
             return
 
         if sender in self.queue:
@@ -258,7 +259,7 @@ class DeployMonitor(object):
 
         return " | ".join((
             status,
-            "%s has the :shell:" % (self.queue[0] if self.queue else "no one"),
+            "%s has the %s" % (self.queue[0] if self.queue else "no one", self.config.conch_emoji),
             "queue: %s" % (", ".join(self.queue[1:]) or "<empty>"),
         ))
 
