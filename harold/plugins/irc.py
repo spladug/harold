@@ -26,10 +26,6 @@ class IrcConfig(PluginConfig):
     heartbeat_channel = Option(str)
 
 
-def help(irc, sender, channel, *args):
-    irc.send_message(channel, "see: https://github.com/spladug/harold/wiki")
-
-
 def who(irc, sender, channel, *args):
     irc.describe(channel, "is a bot. see https://github.com/spladug/harold")
 
@@ -215,7 +211,6 @@ def make_plugin(config, http=None):
     # configure the default irc commands
     p = IrcPlugin()
     p.register_command(who)
-    p.register_command(help)
 
     # set up the IRC client
     irc_factory = IRCBotFactory(p, irc_config, dispatcher, channel_manager)

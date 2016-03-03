@@ -85,6 +85,12 @@ class DeployMonitor(object):
         looper = task.LoopingCall(self._update_topic)
         looper.start(10)
 
+    def help(self, irc, sender, channel, *args):
+        if channel != self.config.channel:
+            return
+
+        irc.send_message(channel, "see: https://github.com/spladug/harold/wiki")
+
     def status(self, irc, sender, channel):
         "Get the status of currently running deploys."
         if channel != self.config.channel:
@@ -381,3 +387,4 @@ def make_plugin(config, http, irc):
     irc.register_command(monitor.jump)
     irc.register_command(monitor.kick)
     irc.register_command(monitor.refresh)
+    irc.register_command(monitor.help)
