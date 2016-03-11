@@ -113,7 +113,7 @@ def main():
     session.verify = True
     session.headers["User-Agent"] = "Harold-by-@spladug"
 
-    DESIRED_EVENTS = ["push", "pull_request", "issue_comment"]
+    DESIRED_EVENTS = sorted(["push", "pull_request", "issue_comment"])
     for repo in repositories:
         print repo
 
@@ -133,7 +133,7 @@ def main():
             delete_hook = False
 
             if old_url == webhook_url:
-                if hook["events"] != DESIRED_EVENTS:
+                if sorted(hook["events"]) != DESIRED_EVENTS:
                     print "  Deleting non-conforming hook %d" % hook["id"]
                     delete_hook = True
                 elif found_valid_hook:
