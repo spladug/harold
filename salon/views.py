@@ -42,7 +42,7 @@ def inject_descriptions():
         "state_meanings": {
             "fish": "ready to merge",
             "haircut": "awaiting further review",
-            "nail_care": "awaiting fixes",
+            "nail_care": "awaiting changes",
             "unreviewed": "not reviewed yet",
             "running": "unable to review",
             "eyeglasses": "awaiting reviewer summoning",
