@@ -280,6 +280,15 @@ class SalonDatabase(object):
 
 
 class Salon(object):
+    emoji_rewrites = [
+        (u"\U0001F41F", ":fish:"),
+        (u"\U0001F485", ":nail_care:"),
+        (u"\U0001F487", ":haircut:"),
+        (u"\U0001F453", ":eyeglasses:"),
+        (u"\U0001F3C3", ":running:"),
+        (":runner:", ":running:"),
+    ]
+
     messages_by_emoji = {
         ":fish:": "%(owner)s, %(user)s just :fish:'d your pull request "
                   "%(repo)s#%(id)s (%(short_url)s)",
@@ -336,6 +345,13 @@ class Salon(object):
                                       })
 
     def find_emoji(self, text):
+        if not isinstance(text, unicode):
+            text = text.decode("utf8")
+
+        # github started using real unicode emoji when autocompleting
+        for pattern, replacement in self.emoji_rewrites:
+            text = text.replace(pattern, replacement)
+
         for line in text.splitlines():
             if line.startswith(">"):
                 continue
