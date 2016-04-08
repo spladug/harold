@@ -28,6 +28,7 @@ def _parse_timestamp(ts):
 
 _MENTION_RE = re.compile(r"@([A-Za-z0-9][A-Za-z0-9-]*)")
 def _extract_reviewers(body):
+    body = Salon.rewrite_emoji(body)
     reviewers = set()
     for line in body.splitlines():
         if ":eyeglasses:" in line:
@@ -206,7 +207,7 @@ class SalonDatabase(object):
         yield self._add_mentions(repo, id, pull_request["body"], timestamp)
 
     @inlineCallbacks
-    def process_comment(self, comment):
+    def process_comment(self, comment, emoji):
         m = _PULL_REQUEST_URL_RE.match(comment["html_url"])
         if not m:
             return
@@ -221,13 +222,13 @@ class SalonDatabase(object):
             yield self._add_mentions(repo, pr_id, body, timestamp)
 
         state = "unreviewed"
-        if is_author and ":haircut:" in body:
+        if is_author and emoji == ":haircut:":
             state = "haircut"
-        elif ":running:" in body:
+        elif emoji == ":running:":
             state = "running"
-        elif ":nail_care:" in body:
+        elif emoji == ":nail_care:":
             state = "nail_care"
-        elif ":fish:" in body:
+        elif emoji == ":fish:":
             state = "fish"
 
         should_overwrite = (state != "unreviewed")
@@ -344,13 +345,19 @@ class Salon(object):
                                           "user": submitter,
                                       })
 
-    def find_emoji(self, text):
+    @classmethod
+    def rewrite_emoji(cls, text):
         if not isinstance(text, unicode):
             text = text.decode("utf8")
 
         # github started using real unicode emoji when autocompleting
-        for pattern, replacement in self.emoji_rewrites:
+        for pattern, replacement in cls.emoji_rewrites:
             text = text.replace(pattern, replacement)
+
+        return text
+
+    def find_emoji(self, text):
+        text = self.rewrite_emoji(text)
 
         for line in text.splitlines():
             if line.startswith(">"):
@@ -365,12 +372,12 @@ class Salon(object):
         if parsed["action"] != "created":
             return
 
-        yield self.database.process_comment(parsed["comment"])
-
         body = parsed["comment"]["body"]
         emoji, message = self.find_emoji(body)
         if not emoji:
             return
+
+        yield self.database.process_comment(parsed["comment"], emoji)
 
         repository_name = parsed["repository"]["full_name"]
         repository = self.config.repositories_by_name[repository_name]
