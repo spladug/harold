@@ -247,18 +247,17 @@ class SalonDatabase(object):
 
     @inlineCallbacks
     def _add_mentions(self, repo, id, body, timestamp):
-        if ":eyeglasses:" in body:
-            for mention in _extract_reviewers(body):
-                try:
-                    yield self._insert("github_review_states", {
-                        "repository": repo,
-                        "pull_request_id": id,
-                        "user": mention,
-                        "timestamp": timestamp,
-                        "state": "unreviewed",
-                    })
-                except self.database.module.IntegrityError:
-                    pass
+        for mention in _extract_reviewers(body):
+            try:
+                yield self._insert("github_review_states", {
+                    "repository": repo,
+                    "pull_request_id": id,
+                    "user": mention,
+                    "timestamp": timestamp,
+                    "state": "unreviewed",
+                })
+            except self.database.module.IntegrityError:
+                pass
 
     @inlineCallbacks
     def get_reviewers(self, repo, pr_id):
@@ -334,16 +333,15 @@ class Salon(object):
             title=parsed["pull_request"]["title"][:72],
         ))
 
-        if ":eyeglasses:" in parsed["pull_request"]["body"]:
-            reviewers = _extract_reviewers(parsed["pull_request"]["body"])
-            reviewers = map(self.config.nick_by_user, reviewers)
-            if reviewers:
-                self.bot.send_message(repository.channel,
-                                      "%(reviewers)s: %(user)s has requested "
-                                      "your review of ^" % {
-                                          "reviewers": ", ".join(reviewers),
-                                          "user": submitter,
-                                      })
+        reviewers = _extract_reviewers(parsed["pull_request"]["body"])
+        reviewers = map(self.config.nick_by_user, reviewers)
+        if reviewers:
+            self.bot.send_message(repository.channel,
+                                  "%(reviewers)s: %(user)s has requested "
+                                  "your review of ^" % {
+                                      "reviewers": ", ".join(reviewers),
+                                      "user": submitter,
+                                  })
 
     @classmethod
     def rewrite_emoji(cls, text):
