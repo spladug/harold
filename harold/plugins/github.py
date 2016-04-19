@@ -281,12 +281,19 @@ class SalonDatabase(object):
 
 class Salon(object):
     emoji_rewrites = [
+        # github started doing unicode characters for autocompleted emoji
         (u"\U0001F41F", ":fish:"),
         (u"\U0001F485", ":nail_care:"),
         (u"\U0001F487", ":haircut:"),
         (u"\U0001F453", ":eyeglasses:"),
         (u"\U0001F3C3", ":running:"),
+
+        # github stopped autocompleting :running:
         (":runner:", ":running:"),
+
+        # this is just for fun
+        (":tropical_fish:", ":fish:"),
+        (u"\U0001F420", ":fish:"),
     ]
 
     messages_by_emoji = {
