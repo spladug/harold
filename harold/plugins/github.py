@@ -302,7 +302,7 @@ class Salon(object):
                   "%(repo)s#%(id)s (%(short_url)s)",
         ":nail_care:": "%(owner)s, %(user)s has finished this review pass on "
                        "pull request %(repo)s#%(id)s (%(short_url)s)",
-        ":haircut:": "%(reviewers)s: %(owner)s is ready for further review of "
+        ":haircut:": "%(reviewers)s: %(owner_de)s is ready for further review of "
                      "pull request %(repo)s#%(id)s (%(short_url)s)",
         ":eyeglasses:": "%(reviewers)s: %(user)s has requested your review "
                         "of %(repo)s#%(id)s (%(short_url)s)",
@@ -391,9 +391,11 @@ class Salon(object):
         short_url = yield self.shortener.make_short_url(html_link)
         pr_id = int(parsed["issue"]["number"])
 
+        owner = self.config.nick_by_user(parsed["issue"]["user"]["login"])
         message_info = dict(
             user=dehilight(self.config.nick_by_user(parsed["sender"]["login"])),
-            owner=self.config.nick_by_user(parsed["issue"]["user"]["login"]),
+            owner=owner,
+            owner_de=dehilight(owner),
             id=str(pr_id),
             short_url=short_url,
             repo=repository_name,
