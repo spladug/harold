@@ -198,6 +198,17 @@ class DeployMonitor(object):
         self._update_conch()
         self._update_topic()
 
+    def enqueue(self, irc, sender, channel, *users):
+        if channel != self.config.channel:
+            return
+
+        for user in users:
+            if user not in self.queue:
+                self.queue.append(user)
+
+        self._update_topic()
+        self._update_conch()
+
     def kick(self, irc, sender, channel, user):
         if channel != self.config.channel:
             return
@@ -389,3 +400,4 @@ def make_plugin(config, http, irc):
     irc.register_command(monitor.kick)
     irc.register_command(monitor.refresh)
     irc.register_command(monitor.help)
+    irc.register_command(monitor.enqueue)
