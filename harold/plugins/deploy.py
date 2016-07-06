@@ -113,7 +113,7 @@ class DeployMonitor(object):
                   (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
                    d.args, d.log_path))
 
-    def hold(self, irc, sender, channel):
+    def hold(self, irc, sender, channel, *ignored):
         if channel != self.config.channel:
             return
 
@@ -125,7 +125,7 @@ class DeployMonitor(object):
         self.current_hold = sender
         self._update_topic()
 
-    def unhold(self, irc, sender, channel):
+    def unhold(self, irc, sender, channel, *ignored):
         if channel != self.config.channel:
             return
 
@@ -137,7 +137,7 @@ class DeployMonitor(object):
         self.current_hold = None
         self._update_topic()
 
-    def acquire(self, irc, sender, channel):
+    def acquire(self, irc, sender, channel, *ignored):
         if channel != self.config.channel:
             return
 
@@ -153,7 +153,7 @@ class DeployMonitor(object):
         self._update_topic()
         self._update_conch()
 
-    def aquire(self, irc, sender, channel):
+    def aquire(self, irc, sender, channel, *ignored):
         if channel != self.config.channel:
             return
 
@@ -170,7 +170,7 @@ class DeployMonitor(object):
             new_conch = None
         self.current_conch = new_conch
 
-    def release(self, irc, sender, channel):
+    def release(self, irc, sender, channel, *ignored):
         if channel != self.config.channel:
             return
 
