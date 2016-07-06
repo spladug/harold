@@ -38,3 +38,7 @@ def pretty_and_accurate_time_span(delta):
     elif seconds > 1:
         parts.append("%d seconds" % seconds)
     return ", ".join(parts)
+
+
+def dehilight(name):
+    return "{}.{}".format(name[0], name[1:])

@@ -8,6 +8,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from harold.plugins.http import ProtectedResource
 from harold.shorturl import UrlShortener
 from harold.conf import PluginConfig, Option, tup
+from harold.utils import dehilight
 
 
 REPOSITORY_PREFIX = 'harold:repository:'
@@ -333,7 +334,7 @@ class Salon(object):
         message = ("%(user)s opened pull request #%(id)d (%(short_url)s) "
                    "on %(repo)s: %(title)s")
         self.bot.send_message(repository.channel, message % dict(
-            user=submitter,
+            user=dehilight(submitter),
             id=parsed["number"],
             short_url=short_url,
             repo=repository_name,
@@ -347,7 +348,7 @@ class Salon(object):
                                   "%(reviewers)s: %(user)s has requested "
                                   "your review of ^" % {
                                       "reviewers": ", ".join(reviewers),
-                                      "user": submitter,
+                                      "user": dehilight(submitter),
                                   })
 
     @classmethod
@@ -391,7 +392,7 @@ class Salon(object):
         pr_id = int(parsed["issue"]["number"])
 
         message_info = dict(
-            user=self.config.nick_by_user(parsed["sender"]["login"]),
+            user=dehilight(self.config.nick_by_user(parsed["sender"]["login"])),
             owner=self.config.nick_by_user(parsed["issue"]["user"]["login"]),
             id=str(pr_id),
             short_url=short_url,

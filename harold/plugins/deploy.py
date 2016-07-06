@@ -6,7 +6,7 @@ from twisted.internet import reactor, task
 
 from harold.plugins.http import ProtectedResource
 from harold.conf import PluginConfig, Option
-from harold.utils import pretty_and_accurate_time_span
+from harold.utils import pretty_and_accurate_time_span, dehilight
 
 
 class DeployConfig(PluginConfig):
@@ -204,7 +204,7 @@ class DeployMonitor(object):
 
         if user not in self.queue:
             self.irc.bot.send_message(
-                channel, "%s, %s is not in the queue" % (sender, user))
+                channel, "%s, %s is not in the queue" % (sender, dehilight(user)))
             return
 
         self.queue.remove(user)
@@ -260,7 +260,7 @@ class DeployMonitor(object):
         return " | ".join((
             status,
             "%s has the %s" % (self.queue[0] if self.queue else "no one", self.config.conch_emoji),
-            "queue: %s" % (", ".join(self.queue[1:]) or "<empty>"),
+            "queue: %s" % (", ".join(map(dehilight, self.queue[1:])) or "<empty>"),
         ))
 
     def _update_topic(self, force=False):
