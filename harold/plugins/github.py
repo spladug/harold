@@ -297,8 +297,8 @@ class Salon(object):
         (u"\U0001F420", ":fish:"),
         (":trumpet::skull:", ":fish:"),
         (":trumpet: :skull:", ":fish:"),
-        ("u\U0001F3BA \U0001F480", ":fish:"),
-        ("u\U0001F3BA\U0001F480", ":fish:"),
+        (u"\U0001F3BA \U0001F480", ":fish:"),
+        (u"\U0001F3BA\U0001F480", ":fish:"),
     ]
 
     messages_by_emoji = {
