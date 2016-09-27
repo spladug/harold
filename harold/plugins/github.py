@@ -294,11 +294,11 @@ class Salon(object):
 
         # this is just for fun
         (":tropical_fish:", ":fish:"),
+        (u"\U0001F420", ":fish:"),
         (":trumpet::skull:", ":fish:"),
         (":trumpet: :skull:", ":fish:"),
         ("u\U0001F3BA \U0001F480", ":fish:"),
         ("u\U0001F3BA\U0001F480", ":fish:"),
-        (u"\U0001F420", ":fish:"),
     ]
 
     messages_by_emoji = {
