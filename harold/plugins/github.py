@@ -292,6 +292,10 @@ class Salon(object):
         # github stopped autocompleting :running:
         (":runner:", ":running:"),
 
+        # and now ":haircut:" is gone from github
+        (":haircut_man:", ":haircut:"),
+        (":haircut_woman:", ":haircut:"),
+
         # this is just for fun
         (":tropical_fish:", ":fish:"),
         (u"\U0001F420", ":fish:"),
