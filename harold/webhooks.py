@@ -113,7 +113,7 @@ def main():
     session.verify = True
     session.headers["User-Agent"] = "Harold-by-@spladug"
 
-    DESIRED_EVENTS = sorted(["push", "pull_request", "issue_comment"])
+    DESIRED_EVENTS = sorted(["push", "pull_request", "issue_comment", "pull_request_review"])
     for repo in repositories:
         print repo
 

@@ -208,17 +208,8 @@ class SalonDatabase(object):
         yield self._add_mentions(repo, id, pull_request["body"], timestamp)
 
     @inlineCallbacks
-    def process_comment(self, comment, emoji):
-        m = _PULL_REQUEST_URL_RE.match(comment["html_url"])
-        if not m:
-            return
-
-        repo = m.group("repository")
-        pr_id = int(m.group("number"))
-        body = comment["body"]
-        timestamp = _parse_timestamp(comment["created_at"])
-
-        is_author = yield self._is_author(repo, pr_id, comment["user"]["login"])
+    def update_review_state(self, repo, pr_id, body, timestamp, user, emoji):
+        is_author = yield self._is_author(repo, pr_id, user)
         if is_author:
             yield self._add_mentions(repo, pr_id, body, timestamp)
 
@@ -238,7 +229,7 @@ class SalonDatabase(object):
             yield self._insert("github_review_states", {
                 "repository": repo,
                 "pull_request_id": pr_id,
-                "user": comment["user"]["login"],
+                "user": user,
                 "timestamp": timestamp,
                 "state": state,
             }, replace_on_conflict=should_overwrite)
@@ -391,13 +382,16 @@ class Salon(object):
         if not emoji:
             return
 
-        yield self.database.process_comment(parsed["comment"], emoji)
-
         repository_name = parsed["repository"]["full_name"]
         repository = self.config.repositories_by_name[repository_name]
         html_link = parsed["issue"]["pull_request"]["html_url"]
         short_url = yield self.shortener.make_short_url(html_link)
         pr_id = int(parsed["issue"]["number"])
+        timestamp = _parse_timestamp(parsed["comment"]["created_at"])
+
+        yield self.database.update_review_state(
+            repository_name, pr_id, parsed["comment"]["body"],
+            timestamp, parsed["sender"]["login"], emoji)
 
         owner = self.config.nick_by_user(parsed["issue"]["user"]["login"])
         message_info = dict(
@@ -424,6 +418,49 @@ class Salon(object):
 
         self.bot.send_message(repository.channel, message % message_info)
 
+    @inlineCallbacks
+    def dispatch_review(self, parsed):
+        if parsed["action"] != "submitted":
+            return
+
+        repository_name = parsed["repository"]["full_name"]
+        repository = self.config.repositories_by_name[repository_name]
+        html_link = parsed["pull_request"]["html_url"]
+        short_url = yield self.shortener.make_short_url(html_link)
+        pr_id = int(parsed["pull_request"]["number"])
+        timestamp = _parse_timestamp(parsed["review"]["submitted_at"])
+
+        emoji_by_state = {
+            "approved": ":fish:",
+            "changes_requested": ":nail_care:",
+        }
+        emoji = emoji_by_state.get(parsed["review"]["state"])
+        if not emoji:
+            return
+        message = self.messages_by_emoji[emoji]
+
+        yield self.database.update_review_state(
+            repository_name, pr_id, parsed["review"]["body"],
+            timestamp, parsed["sender"]["login"], emoji)
+
+        owner = self.config.nick_by_user(parsed["pull_request"]["user"]["login"])
+        message_info = dict(
+            user=dehilight(self.config.nick_by_user(parsed["sender"]["login"])),
+            owner=owner,
+            owner_de=dehilight(owner),
+            id=str(pr_id),
+            short_url=short_url,
+            repo=repository_name,
+        )
+
+        if "%(reviewers)s" in message:
+            reviewers = yield self.database.get_reviewers(repository_name, pr_id)
+            mapped_reviewers = map(self.config.nick_by_user, reviewers)
+            message_info["reviewers"] = ", ".join(mapped_reviewers or
+                                                  ["(no one in particular)"])
+
+        self.bot.send_message(repository.channel, message % message_info)
+
 
 class GitHubListener(ProtectedResource):
     isLeaf = True
@@ -440,6 +477,7 @@ class GitHubListener(ProtectedResource):
             "push": push_dispatcher.dispatch_push,
             "pull_request": salon.dispatch_pullrequest,
             "issue_comment": salon.dispatch_comment,
+            "pull_request_review": salon.dispatch_review,
         }
 
     def _handle_request(self, request):
