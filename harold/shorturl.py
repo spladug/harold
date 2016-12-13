@@ -68,10 +68,6 @@ class UrlShortener(object):
         return self._make_short_url(long_url)
 
     def make_short_url(self, long_url):
-        if not self.request_in_flight:
-            return self._make_short_url(long_url)
-
         d = Deferred()
-        d.addCallback(self._start_another_request, long_url)
-        self.pending_requests.append(d)
+        d.callback(long_url)
         return d
