@@ -4,7 +4,7 @@
 {% block content %}
   <div class="listing">
     <h2>to review</h2>
-    {% for state in ["haircut", "unreviewed", "nail_care", "fish", "running"]: %}
+    {% for state in ["haircut", "unreviewed", "nail_care", "fish"]: %}
     <h3 class="state-{{ state }}">{{ state_meanings[state] }}</h3>
       {% for pull_request in to_review[state]: %}
       <div class="pull-request">
