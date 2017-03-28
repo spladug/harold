@@ -197,7 +197,6 @@ class IrcPlugin(Plugin):
             fn(self.bot, sender_nick, channel, *args)
         except:
             traceback.print_exc()
-            self.bot.describe(channel, "just had a hiccup.")
 
 
 def make_plugin(config, http=None):
