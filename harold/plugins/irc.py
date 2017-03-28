@@ -31,7 +31,9 @@ def who(irc, sender, channel, *args):
 
 
 def debug(irc, sender, channel, *args):
-    irc.describe(channel, "instance `%s` is up!" % os.environ.get("name", "main"))
+    instance_name = os.environ.get("name", "main")
+    if not args or args[0] == instance_name:
+        irc.describe(channel, "instance `%s` is up!" % os.environ.get("name", "main"))
 
 
 class IRCBot(irc.IRCClient):
