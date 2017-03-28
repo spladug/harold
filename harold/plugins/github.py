@@ -175,6 +175,24 @@ class SalonDatabase(object):
         return self._insert(table, data, replace_on_conflict=True)
 
     @inlineCallbacks
+    def _delete(self, table, data):
+        if not self.database:
+            return
+
+        # this isn't as bad as it looks. just the table/column names are
+        # done with string concatenation; those should be coming from
+        # hard-coded strings in the source and therefore safe. actual data
+        # is parameterized.
+        query = (
+            "DELETE FROM %(table)s WHERE %(conditions)s" % {
+                "table": table,
+                "conditions": " AND ".join("{0} = :{0}".format(column_name)
+                                           for column_name in data.iterkeys()),
+            }
+        )
+        yield self.database.runOperation(query, data)
+
+    @inlineCallbacks
     def _is_author(self, repo, pr_id, username):
         if not self.database:
             return
@@ -238,18 +256,30 @@ class SalonDatabase(object):
                 raise
 
     @inlineCallbacks
+    def add_review_request(self, repo, pull_request_id, username, timestamp):
+        try:
+            yield self._insert("github_review_states", {
+                "repository": repo,
+                "pull_request_id": pull_request_id,
+                "user": username,
+                "timestamp": timestamp,
+                "state": "unreviewed",
+            })
+        except self.database.module.IntegrityError:
+            pass
+
+    @inlineCallbacks
+    def remove_review_request(self, repo, pull_request_id, username):
+        yield self._delete("github_review_states", {
+            "repository": repo,
+            "pull_request_id": pull_request_id,
+            "user": username,
+        })
+
+    @inlineCallbacks
     def _add_mentions(self, repo, id, body, timestamp):
         for mention in _extract_reviewers(body):
-            try:
-                yield self._insert("github_review_states", {
-                    "repository": repo,
-                    "pull_request_id": id,
-                    "user": mention,
-                    "timestamp": timestamp,
-                    "state": "unreviewed",
-                })
-            except self.database.module.IntegrityError:
-                pass
+            yield self.add_review_request(repo, id, mention, timestamp)
 
     @inlineCallbacks
     def get_reviewers(self, repo, pr_id):
@@ -318,37 +348,62 @@ class Salon(object):
 
     @inlineCallbacks
     def dispatch_pullrequest(self, parsed):
-        yield self.database.process_pullrequest(parsed["pull_request"],
-                                        parsed["repository"]["full_name"])
-
-        if parsed["action"] != "opened":
-            return
-
+        pull_request = parsed["pull_request"]
+        timestamp = _parse_timestamp(pull_request["created_at"])
         repository_name = parsed["repository"]["full_name"]
         repository = self.config.repositories_by_name[repository_name]
+        pull_request_id = parsed["number"]
+        sender = self.config.nick_by_user(parsed["sender"]["login"])
 
-        html_link = parsed["pull_request"]["_links"]["html"]["href"]
+        yield self.database.process_pullrequest(pull_request, repository_name)
+
+        html_link = pull_request["_links"]["html"]["href"]
         short_url = yield self.shortener.make_short_url(html_link)
-        submitter = self.config.nick_by_user(parsed["sender"]["login"])
-        message = ("%(user)s opened pull request #%(id)d (%(short_url)s) "
-                   "on %(repo)s: %(title)s")
-        self.bot.send_message(repository.channel, message % dict(
-            user=dehilight(submitter),
-            id=parsed["number"],
-            short_url=short_url,
-            repo=repository_name,
-            title=parsed["pull_request"]["title"][:72],
-        ))
 
-        reviewers = _extract_reviewers(parsed["pull_request"]["body"])
-        reviewers = map(self.config.nick_by_user, reviewers)
-        if reviewers:
-            self.bot.send_message(repository.channel,
-                                  "%(reviewers)s: %(user)s has requested "
-                                  "your review of ^" % {
-                                      "reviewers": ", ".join(reviewers),
-                                      "user": dehilight(submitter),
-                                  })
+        if parsed["action"] == "review_requested":
+            username = parsed["requested_reviewer"]["login"]
+            yield self.database.add_review_request(
+                repo=repository_name,
+                pull_request_id=pull_request_id,
+                username=username,
+                timestamp=timestamp,
+            )
+
+            message = self.messages_by_emoji[":eyeglasses:"]
+            self.bot.send_message(repository.channel, message % {
+                "reviewers": self.config.nick_by_user(username),
+                "user": dehilight(sender),
+                "repo": repository_name,
+                "id": pull_request_id,
+                "short_url": short_url,
+            })
+        elif parsed["action"] == "review_request_removed":
+            username = parsed["requested_reviewer"]["login"]
+            yield self.database.remove_review_request(
+                repo=repository_name,
+                pull_request_id=pull_request_id,
+                username=username,
+            )
+        elif parsed["action"] == "opened":
+            message = ("%(user)s opened pull request #%(id)d (%(short_url)s) "
+                       "on %(repo)s: %(title)s")
+            self.bot.send_message(repository.channel, message % dict(
+                user=dehilight(sender),
+                id=pull_request_id,
+                short_url=short_url,
+                repo=repository_name,
+                title=pull_request["title"][:72],
+            ))
+
+            reviewers = _extract_reviewers(pull_request["body"])
+            reviewers = map(self.config.nick_by_user, reviewers)
+            if reviewers:
+                self.bot.send_message(repository.channel,
+                                      "%(reviewers)s: %(user)s has requested "
+                                      "your review of ^" % {
+                                          "reviewers": ", ".join(reviewers),
+                                          "user": dehilight(sender),
+                                      })
 
     @classmethod
     def rewrite_emoji(cls, text):
