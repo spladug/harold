@@ -187,6 +187,8 @@ class IrcPlugin(Plugin):
         else:
             highlight = ""
 
+        highlight = highlight.lstrip("@")
+
         if not highlight.startswith(self.config.nick):
             return
 
