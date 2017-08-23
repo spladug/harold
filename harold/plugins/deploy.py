@@ -1,5 +1,6 @@
 import datetime
 import functools
+import json
 
 from twisted.web import resource
 from twisted.internet import reactor, task
@@ -19,6 +20,21 @@ class DeployListener(ProtectedResource):
     def __init__(self, http, monitor):
         ProtectedResource.__init__(self, http)
         self.monitor = monitor
+
+
+class DeployStatusListener(resource.Resource):
+    isLeaf = True
+
+    def __init__(self, monitor):
+        self.monitor = monitor
+        resource.Resource.__init__(self)
+
+    def render_GET(self, request):
+        request.setHeader("Content-Type", "application/json")
+        return json.dumps({
+            "time_status": self.monitor.current_time_status(),
+            "busy": bool(self.monitor.deploys),
+        })
 
 
 class DeployBeganListener(DeployListener):
@@ -383,6 +399,7 @@ def make_plugin(config, http, irc):
     # set up http api
     deploy_root = resource.Resource()
     http.root.putChild('deploy', deploy_root)
+    deploy_root.putChild('status', DeployStatusListener(monitor))
     deploy_root.putChild('begin', DeployBeganListener(http, monitor))
     deploy_root.putChild('end', DeployEndedListener(http, monitor))
     deploy_root.putChild('abort', DeployAbortedListener(http, monitor))
