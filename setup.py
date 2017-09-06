@@ -26,16 +26,4 @@ setup(
             "salon-sync = salon.sync:main [salon]",
         ],
     },
-    data_files=[
-        ("/usr/local/sbin/", [
-            "harold.tac",
-        ]),
-        ("/etc/init/", [
-            "upstart/harold.conf",
-            "upstart/harold-startup.conf",
-        ]),
-        ("/etc/harold.d/", [
-            "README.md",
-        ]),
-    ],
 )
