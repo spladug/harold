@@ -23,7 +23,6 @@ class IrcConfig(PluginConfig):
     use_ssl = Option(bool, default=False)
     channels = Option(tup, default=[])
     userserv_password = Option(str, default=None)
-    heartbeat_channel = Option(str)
 
 
 def who(irc, sender, channel, *args):
@@ -115,7 +114,6 @@ class IRCBotFactory(protocol.ClientFactory):
         prot.password = self.config.password
         prot.username = self.config.username
         prot.userserv_password = self.config.userserv_password
-        prot.heartbeat_channel = self.config.heartbeat_channel
         return prot
 
     def clientConnectionFailed(self, connector, reason):
