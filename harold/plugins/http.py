@@ -29,7 +29,6 @@ def constant_time_compare(actual, expected):
 
 class HttpConfig(PluginConfig):
     endpoint = Option(str)
-    secret = Option(str)
     hmac_secret = Option(str, default=None)
     public_root = Option(str, default="")
 
@@ -58,11 +57,6 @@ class ProtectedResource(resource.Resource):
 
                 if not constant_time_compare(expected_hash, actual_hash):
                     raise AuthenticationError
-            elif request.postpath:
-                # old method: secret token appended to request url. deprecated.
-                secret = request.postpath.pop(-1)
-                if not constant_time_compare(secret, self.http.secret):
-                    raise AuthenticationError
             else:
                 # no further authentication methods
                 raise AuthenticationError
@@ -88,7 +82,6 @@ def make_plugin(config):
 
     plugin = Plugin()
     plugin.root = harold
-    plugin.secret = http_config.secret
     plugin.hmac_secret = http_config.hmac_secret
     plugin.add_service(service)
 
