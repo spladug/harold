@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
+import argparse
 import getpass
+import glob
 import json
-import os
 import posixpath
 import socket
 import sys
@@ -14,6 +15,10 @@ from requests.auth import HTTPBasicAuth
 from harold.conf import HaroldConfiguration
 from harold.plugins.github import GitHubConfig
 from harold.plugins.http import HttpConfig
+
+
+def get_netloc(url):
+    return urlparse.urlparse(url).netloc
 
 
 def guess_local_address():
@@ -56,66 +61,35 @@ def _make_hooks_url(repo, endpoint=None):
     ))
 
 
-def main():
-    # config file is an expected argument
-    bin_name = os.path.basename(sys.argv[0])
-    if len(sys.argv) != 2:
-        print >> sys.stderr, "USAGE: %s INI_FILE" % bin_name
-        sys.exit(1)
+def configure_webhooks_for_instance(access_token, config_filename, dry_run):
+    print "Processing %s" % config_filename
+    harold_config = HaroldConfiguration(config_filename)
 
-    config_file = sys.argv[1]
-    try:
-        harold_config = HaroldConfiguration(config_file)
-    except Exception as e:
-        print >> sys.stderr, "%s: failed to read config file %r: %s" % (
-            bin_name,
-            config_file,
-            e,
-        )
-        sys.exit(1)
-
-    delete_unknown_hooks = yesno(
-        "Should I delete unknown webhooks? [Y/n] ", default=True)
-    print
-
-    # figure out which repos we care about
     gh_config = GitHubConfig(harold_config)
     repositories = gh_config.repositories_by_name.keys()
-
     if not repositories:
-        print "No repositories to register with!"
-        sys.exit(0)
+        print "  No repositories to register with!"
+        return
 
     http_config = HttpConfig(harold_config)
     root = urlparse.urlparse(http_config.public_root)
     webhook_url = urlparse.urlunsplit((
-        root.scheme or "http",
-        root.netloc or guess_local_address(),
+        root.scheme,
+        root.netloc,
         posixpath.join(root.path, "harold/github"),
         None,
         None
     ))
-    print "Webhooks will be sent to %r" % webhook_url
-
-    print
-    print "I will ensure webhooks are registered for:"
-    for repo in repositories:
-        print "  - " + repo
-    print
-
-    print
-    print "Please enter a GitHub personal access token (found at Settings >>"
-    print "Applications on GitHub) with the admin:repo_hook scope authorized"
-    token = getpass.getpass("Token: ").strip()
+    print "  Webhooks will be sent to %r" % webhook_url
 
     session = requests.session()
-    session.auth = HTTPBasicAuth(token, "x-oauth-basic")
+    session.auth = HTTPBasicAuth(access_token, "x-oauth-basic")
     session.verify = True
     session.headers["User-Agent"] = "Harold-by-@spladug"
 
     DESIRED_EVENTS = sorted(["push", "pull_request", "issue_comment", "pull_request_review"])
-    for repo in repositories:
-        print repo
+    for repo in sorted(repositories):
+        print "  %s" % repo
 
         # list existing hooks
         hooks_response = session.get(_make_hooks_url(repo))
@@ -132,31 +106,32 @@ def main():
 
             delete_hook = False
 
-            if old_url == webhook_url:
-                if sorted(hook["events"]) != DESIRED_EVENTS:
-                    print "  Deleting non-conforming hook %d" % hook["id"]
+            if get_netloc(old_url) == get_netloc(webhook_url):
+                if old_url != webhook_url:
+                    print "    Deleting hook with out of date URL %s" % hook["config"]["url"]
+                    delete_hook = True
+                elif sorted(hook["events"]) != DESIRED_EVENTS:
+                    print "    Deleting hook with incorrect events (%s)" % (sorted(hook["events"]),)
                     delete_hook = True
                 elif found_valid_hook:
-                    print "  Deleting duplicate hook %d" % hook["id"]
+                    print "    Deleting duplicate hook %d" % hook["id"]
                     delete_hook = True
                 else:
-                    print "  Found existing valid hook (%d)" % hook["id"]
+                    print "    Found existing valid hook (%d)" % hook["id"]
                     found_valid_hook = True
             else:
-                if delete_unknown_hooks:
-                    print "  Deleting unrecognized hook %d" % hook["id"]
-                    delete_hook = True
-                else:
-                    print "  Skipping unrecognized hook %d" % hook["id"]
+                    print "    Skipping unrecognized hook %d" % hook["id"]
 
-            if delete_hook:
+            if not dry_run and delete_hook:
                 response = session.delete(_make_hooks_url(repo, str(hook["id"])))
                 response.raise_for_status()
 
         if found_valid_hook:
             continue
 
-        print "  Registering hook"
+        print "    Registering hook"
+        if dry_run:
+            continue
         response = session.post(
             _make_hooks_url(repo),
             data=json.dumps(dict(
@@ -170,3 +145,26 @@ def main():
             )),
         )
         response.raise_for_status()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", default=False)
+    args = parser.parse_args()
+
+    if args.dry_run:
+        print "Dry run mode! No changes will actually be made."
+    else:
+        print "Live fire mode! All changes will be committed to GitHub."
+    print
+
+    print "Please enter a GitHub personal access token (found at Settings >>"
+    print "Applications on GitHub) with the admin:repo_hook scope authorized"
+    token = getpass.getpass("Token: ").strip()
+
+    for config_filename in sorted(glob.glob("/etc/harold.d/*.ini")):
+        configure_webhooks_for_instance(token, config_filename, args.dry_run)
+
+
+if __name__ == "__main__":
+    main()
