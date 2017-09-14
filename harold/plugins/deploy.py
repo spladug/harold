@@ -129,29 +129,33 @@ class DeployMonitor(object):
                   (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
                    d.args, d.log_path))
 
-    def hold(self, irc, sender, channel, *ignored):
+    def _hold(self, reason):
+        if not reason:
+            reason_text = "no reason given"
+        else:
+            reason_text = " ".join(reason)
+        self.current_hold = reason_text
+        self._update_topic()
+
+    def hold(self, irc, sender, channel, *reason):
         if channel != self.config.channel:
             return
+        self._hold(reason)
 
-        if self.current_hold:
-            self.irc.bot.send_message(
-                channel, "%s, deploys are already on hold" % sender)
-            return
+    def hold_all(self, irc, sender, channel, *reason):
+        self._hold(reason)
 
-        self.current_hold = sender
+    def _unhold(self):
+        self.current_hold = None
         self._update_topic()
 
     def unhold(self, irc, sender, channel, *ignored):
         if channel != self.config.channel:
             return
+        self._unhold()
 
-        if not self.current_hold:
-            self.irc.bot.send_message(
-                channel, "%s, deploys are not on hold" % sender)
-            return
-
-        self.current_hold = None
-        self._update_topic()
+    def unhold_all(self, irc, sender, channel, *ignored):
+        self._unhold()
 
     def acquire(self, irc, sender, channel, *ignored):
         if channel != self.config.channel:
@@ -267,8 +271,8 @@ class DeployMonitor(object):
         deploy_count = len(self.deploys)
 
         if deploy_count == 0:
-            if self.current_hold:
-                status = ":no_entry_sign: deploys ON HOLD by request of %s" % self.current_hold
+            if self.current_hold is not None:
+                status = ":no_entry_sign: deploys ON HOLD (%s)" % self.current_hold
             else:
                 time_status = self.current_time_status()
 
@@ -410,6 +414,8 @@ def make_plugin(config, http, irc):
     irc.register_command(monitor.status)
     irc.register_command(monitor.hold)
     irc.register_command(monitor.unhold)
+    irc.register_command(monitor.hold_all)
+    irc.register_command(monitor.unhold_all)
     irc.register_command(monitor.acquire)
     irc.register_command(monitor.aquire)
     irc.register_command(monitor.release)
