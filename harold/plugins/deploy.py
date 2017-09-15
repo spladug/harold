@@ -152,7 +152,7 @@ class DeployMonitor(object):
         reply = functools.partial(self.irc.bot.send_message, channel)
 
         if not self.deploys:
-            reply("%s, there are currently no active deploys." % sender)
+            reply("@%s: there are currently no active deploys." % sender)
 
         deploys = sorted(self.deploys.values(), key=lambda d: d.when)
         for d in deploys:
@@ -161,7 +161,7 @@ class DeployMonitor(object):
                 percent = (float(d.completion) / d.host_count) * 100.0
                 status = " (which is on %s -- %d%% done)" % (d.where, percent)
 
-            reply('%s, %s started deploy "%s"%s at %s with args "%s". log: %s' %
+            reply('@%s: %s started deploy "%s"%s at %s with args "%s". log: %s' %
                   (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
                    d.args, d.log_path))
 
@@ -199,11 +199,11 @@ class DeployMonitor(object):
 
         if sender in self.queue:
             self.irc.bot.send_message(
-                channel, "%s, you are already in the queue" % sender)
+                channel, "@%s: you are already in the queue" % sender)
             return
         elif self.queue:
             self.irc.bot.send_message(
-                channel, "%s, ok -- you're in the queue" % sender)
+                channel, "@%s: ok -- you're in the queue" % sender)
 
         self.queue.append(sender)
         self._update_topic()
@@ -221,7 +221,7 @@ class DeployMonitor(object):
             new_conch = self.queue[0]
             if new_conch != self.current_conch:
                 self.irc.bot.send_message(self.config.channel,
-                    "%s, you have the %s" % (new_conch, self.config.conch_emoji))
+                    "@%s: you have the %s" % (new_conch, self.config.conch_emoji))
         else:
             new_conch = None
         self.current_conch = new_conch
@@ -232,7 +232,7 @@ class DeployMonitor(object):
 
         if sender not in self.queue:
             self.irc.bot.send_message(
-                channel, "%s, you are not in the queue" % sender)
+                channel, "@%s: you are not in the queue" % sender)
             return
 
         self.queue.remove(sender)
@@ -245,7 +245,7 @@ class DeployMonitor(object):
 
         if self.queue and self.queue[0] == sender:
             self.irc.bot.send_message(
-                channel, "%s, you already have the %s" % (sender, self.config.conch_emoji))
+                channel, "@%s: you already have the %s" % (sender, self.config.conch_emoji))
             return
 
         if sender in self.queue:
@@ -271,7 +271,7 @@ class DeployMonitor(object):
 
         if user not in self.queue:
             self.irc.bot.send_message(
-                channel, "%s, %s is not in the queue" % (sender, dehilight(user)))
+                channel, "@%s: %s is not in the queue" % (sender, dehilight(user)))
             return
 
         self.queue.remove(user)
@@ -326,7 +326,7 @@ class DeployMonitor(object):
 
         return " | ".join((
             status,
-            "%s has the %s" % (self.queue[0] if self.queue else "no one", self.config.conch_emoji),
+            "%s has the %s" % ("@" + self.queue[0] if self.queue else "no one", self.config.conch_emoji),
             "queue: %s" % (", ".join(map(dehilight, self.queue[1:])) or "<empty>"),
         ))
 
@@ -364,7 +364,7 @@ class DeployMonitor(object):
 
         self._update_topic()
         self.irc.bot.send_message(self.config.channel,
-                                  '%s started deploy "%s" '
+                                  '@%s started deploy "%s" '
                                   "with args %s" % (who, id, args))
 
     def onPushProgress(self, id, host, index):
@@ -389,8 +389,8 @@ class DeployMonitor(object):
             return
 
         self.irc.bot.send_message(self.config.channel,
-                                  """%s's deploy "%s" is %d%% complete.""" %
-                                  (deploy.who, id, deploy.quadrant * 25))
+                                  """deploy "%s" by @%s is %d%% complete.""" %
+                                  (id, deploy.who, deploy.quadrant * 25))
         deploy.quadrant += 1
 
     def onPushEnded(self, id):
@@ -401,8 +401,8 @@ class DeployMonitor(object):
 
         self.irc.bot.send_message(
             self.config.channel,
-            """%s's deploy "%s" complete. """
-            "Took %s." % (who, id, pretty_and_accurate_time_span(duration))
+            """deploy "%s" by @%s is complete. """
+            "Took %s." % (id, who, pretty_and_accurate_time_span(duration))
         )
         self._update_topic()
 
@@ -413,9 +413,9 @@ class DeployMonitor(object):
 
         deploy.expirator.delay(self.config.deploy_ttl)
         self.irc.bot.send_message(self.config.channel,
-                                  ("""%s's deploy "%s" encountered """
+                                  ("""deploy "%s" by @%s encountered """
                                    "an error: %s") %
-                                  (deploy.who, id, error))
+                                  (id, deploy.who, error))
 
     def onPushAborted(self, id, reason):
         who, duration = self._remove_deploy(id)
@@ -424,8 +424,8 @@ class DeployMonitor(object):
             return
 
         self.irc.bot.send_message(self.config.channel,
-                                  """%s's deploy "%s" aborted (%s)""" %
-                                  (who, id, reason))
+                                  """deploy "%s" by @%s aborted (%s)""" %
+                                  (id, who, reason))
         self._update_topic()
 
 
