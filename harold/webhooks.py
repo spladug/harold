@@ -1,12 +1,12 @@
 #!/usr/bin/python
 
 import argparse
+import ConfigParser
 import getpass
 import glob
 import json
 import posixpath
 import socket
-import sys
 import urlparse
 
 import requests
@@ -65,7 +65,12 @@ def configure_webhooks_for_instance(access_token, config_filename, dry_run):
     print "Processing %s" % config_filename
     harold_config = HaroldConfiguration(config_filename)
 
-    gh_config = GitHubConfig(harold_config)
+    try:
+        gh_config = GitHubConfig(harold_config)
+    except ConfigParser.NoSectionError:
+        print "  No github configuration found!"
+        return
+
     repositories = gh_config.repositories_by_name.keys()
     if not repositories:
         print "  No repositories to register with!"
