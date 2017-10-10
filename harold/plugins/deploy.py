@@ -69,6 +69,7 @@ class DeployStatusListener(resource.Resource):
         return json.dumps({
             "time_status": self.monitor.current_time_status(),
             "busy": bool(self.monitor.deploys),
+            "hold": self.monitor.current_hold,
         })
 
 
