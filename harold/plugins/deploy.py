@@ -1,13 +1,24 @@
 import datetime
 import functools
+import hashlib
+import hmac
 import json
+import time
 
 from twisted.web import resource
 from twisted.internet import reactor, task
 
 from harold.plugins.http import ProtectedResource
 from harold.conf import PluginConfig, Option
-from harold.utils import pretty_and_accurate_time_span, dehilight
+from harold.utils import (
+    constant_time_compare,
+    dehilight,
+    pretty_and_accurate_time_span,
+)
+
+
+# how old/new a deploy status request's timestamp can be to be allowed
+MAX_SKEW_SECONDS = 60
 
 
 class DeployConfig(PluginConfig):
@@ -25,11 +36,35 @@ class DeployListener(ProtectedResource):
 class DeployStatusListener(resource.Resource):
     isLeaf = True
 
-    def __init__(self, monitor):
+    def __init__(self, secret, monitor):
+        self.secret = secret
         self.monitor = monitor
         resource.Resource.__init__(self)
 
     def render_GET(self, request):
+        header_name = "X-Signature"
+
+        if not request.requestHeaders.hasHeader(header_name):
+            request.setResponseCode(401)
+            return ""
+
+        try:
+            header_value = request.requestHeaders.getRawHeaders(header_name)[0]
+            timestamp, sep, signature = header_value.partition(":")
+
+            if sep != ":":
+                raise Exception("unparseable")
+
+            expected = hmac.new(self.secret, timestamp, hashlib.sha256).hexdigest()
+            if not constant_time_compare(signature, expected):
+                raise Exception("invalid signature")
+
+            if abs(time.time() - int(timestamp)) > MAX_SKEW_SECONDS:
+                raise Exception("too much skew")
+        except:
+            request.setResponseCode(403)
+            return ""
+
         request.setHeader("Content-Type", "application/json")
         return json.dumps({
             "time_status": self.monitor.current_time_status(),
@@ -403,7 +438,7 @@ def make_plugin(config, http, irc):
     # set up http api
     deploy_root = resource.Resource()
     http.root.putChild('deploy', deploy_root)
-    deploy_root.putChild('status', DeployStatusListener(monitor))
+    deploy_root.putChild('status', DeployStatusListener(http.hmac_secret, monitor))
     deploy_root.putChild('begin', DeployBeganListener(http, monitor))
     deploy_root.putChild('end', DeployEndedListener(http, monitor))
     deploy_root.putChild('abort', DeployAbortedListener(http, monitor))
