@@ -223,7 +223,7 @@ def make_plugin(config, http=None):
     p.config = irc_config
     p.bot = dispatcher
     p.channels = channel_manager
-    if irc_config:
+    if irc_config.use_ssl:
         context_factory = ssl.ClientContextFactory()
         p.add_service(internet.SSLClient(irc_config.host,
                                          irc_config.port,
