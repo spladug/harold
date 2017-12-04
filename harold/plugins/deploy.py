@@ -90,7 +90,15 @@ class DeployEndedListener(DeployListener):
 
     def _handle_request(self, request):
         id = unicode(request.args['id'][0], 'utf-8')
-        self.monitor.onPushEnded(id)
+
+        try:
+            failed_hosts_arg = request.args["failed_hosts"][0]
+        except KeyError:
+            failed_hosts = []
+        else:
+            failed_hosts = filter(None, failed_hosts_arg.decode("utf-8").split(","))
+
+        self.monitor.onPushEnded(id, failed_hosts)
 
 
 class DeployErrorListener(DeployListener):
@@ -393,7 +401,8 @@ class DeployMonitor(object):
                                   (id, deploy.who, deploy.quadrant * 25))
         deploy.quadrant += 1
 
-    def onPushEnded(self, id):
+    def onPushEnded(self, id, failed_hosts):
+        deploy = self.deploys.get(id)
         who, duration = self._remove_deploy(id)
 
         if not who:
@@ -405,6 +414,15 @@ class DeployMonitor(object):
             "Took %s." % (id, who, pretty_and_accurate_time_span(duration))
         )
         self._update_topic()
+
+        if failed_hosts:
+            self.irc.bot.send_message(
+                "#monitoring",
+                "Deploy `%s` in %s encountered errors on the "
+                    "following hosts: %s. See %s for more information." % (
+                        id, self.config.channel, ", ".join(sorted(failed_hosts)),
+                        deploy.log_path)
+            )
 
     def onPushError(self, id, error):
         deploy = self.deploys.get(id)
