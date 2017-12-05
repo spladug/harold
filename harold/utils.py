@@ -37,6 +37,9 @@ def pretty_and_accurate_time_span(delta):
         parts.append("1 second")
     elif seconds > 1:
         parts.append("%d seconds" % seconds)
+    elif seconds == 0:
+        parts.append("no time")
+
     return ", ".join(parts)
 
 
