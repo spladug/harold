@@ -230,6 +230,10 @@ class DeployMonitor(object):
             if new_conch != self.current_conch:
                 self.irc.bot.send_message(self.config.channel,
                     "@%s: you have the %s" % (new_conch, self.config.conch_emoji))
+                if len(self.queue) > 1:
+                    self.irc.bot.send_message(
+                        self.config.channel,
+                        "@%s: you're up next. please get ready!" % self.queue[1])
         else:
             new_conch = None
         self.current_conch = new_conch
