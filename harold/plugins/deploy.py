@@ -290,6 +290,10 @@ class DeployMonitor(object):
         self._update_conch()
         self._update_topic()
 
+        if user == sender:
+            self.irc.bot.send_message(
+                channel, ":nelson: stop kicking yourself! stop kicking yourself!")
+
     def refresh(self, irc, sender, channel):
         if channel != self.config.channel:
             return
