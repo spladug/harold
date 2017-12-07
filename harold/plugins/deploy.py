@@ -210,8 +210,12 @@ class DeployMonitor(object):
                 channel, "@%s: you are already in the queue" % sender)
             return
         elif self.queue:
-            self.irc.bot.send_message(
-                channel, "@%s: ok -- you're in the queue" % sender)
+            if len(self.queue) > 1:
+                self.irc.bot.send_message(
+                    channel, "@%s: ok -- you're in the queue" % sender)
+            else:
+                self.irc.bot.send_message(
+                    channel, "@%s: ok -- you're in the queue and you're next so please be ready!" % sender)
 
         self.queue.append(sender)
         self._update_topic()
