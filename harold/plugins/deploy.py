@@ -281,7 +281,7 @@ class DeployMonitor(object):
             self.irc.bot.send_message(self.config.channel, "sorry, but @%s has to say it!" % self.queue[0])
             return
 
-        self._start_conch_expiration()
+        self._cancel_conch_expiration()
         self.irc.bot.send_message(self.config.channel, "OK, understood. :disappear:")
 
     def release(self, irc, sender, channel, *ignored):
