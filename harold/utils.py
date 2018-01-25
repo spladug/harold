@@ -18,7 +18,11 @@ def pretty_time_span(delta):
 
 
 def pretty_and_accurate_time_span(delta):
-    seconds = int(delta.total_seconds())
+    seconds = int(round(delta.total_seconds(), 0))
+
+    if seconds == 0:
+        return "no time"
+
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
 
@@ -37,8 +41,6 @@ def pretty_and_accurate_time_span(delta):
         parts.append("1 second")
     elif seconds > 1:
         parts.append("%d seconds" % seconds)
-    elif seconds == 0:
-        parts.append("no time")
 
     return ", ".join(parts)
 
