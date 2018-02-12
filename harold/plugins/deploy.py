@@ -201,6 +201,16 @@ class DeployMonitor(object):
     def unhold_all(self, irc, sender, channel, *ignored):
         self._unhold()
 
+    def forget(self, irc, sender, channel, deploy_id, *ignored):
+        who, duration = self._remove_deploy(deploy_id)
+
+        if not who:
+            return
+
+        self.irc.bot.send_message(
+            self.config.channel, "forgetting deploy %s" % deploy_id)
+        self._update_topic()
+
     def acquire(self, irc, sender, channel, *ignored):
         if channel != self.config.channel:
             return
@@ -490,3 +500,4 @@ def make_plugin(config, http, irc):
     irc.register_command(monitor.refresh)
     irc.register_command(monitor.help)
     irc.register_command(monitor.enqueue)
+    irc.register_command(monitor.forget)
