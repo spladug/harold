@@ -52,4 +52,29 @@ class ReviewState(db.Model):
     state = db.Column(db.String, nullable=False)
 
 
+class Salon(db.Model):
+    __tablename__ = "salons"
+
+    name = db.Column(db.String, primary_key=True, nullable=False)
+    conch_emoji = db.Column(db.String, nullable=False)
+    allow_deploys = db.Column(db.Boolean, default=True)
+
+
+class Repository(db.Model):
+    __tablename__ = "repositories"
+
+    name = db.Column(db.String, primary_key=True, nullable=False)
+    salon = db.Column(db.String, db.ForeignKey("salons.name"), nullable=False)
+    format = db.Column(db.String)
+    bundled_format = db.Column(db.String)
+    branches = db.Column(db.String, default="master")
+
+
+class User(db.Model):
+    __tablename__ = "users"
+
+    irc_nick = db.Column(db.String, primary_key=True)
+    github_username = db.Column(db.String, nullable=False)
+
+
 db.create_all()

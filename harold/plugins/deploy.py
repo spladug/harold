@@ -3,13 +3,16 @@ import functools
 import hashlib
 import hmac
 import json
+import re
 import time
 
-from twisted.web import resource
+from twisted.web import resource, server
 from twisted.internet import reactor, task
+from twisted.internet.defer import inlineCallbacks, returnValue
 
+from harold.conf import PluginConfig, Option, tup
 from harold.plugins.http import ProtectedResource
-from harold.conf import PluginConfig, Option
+from harold.plugins.salons import WouldOrphanRepositoriesError
 from harold.utils import (
     constant_time_compare,
     dehilight,
@@ -20,11 +23,12 @@ from harold.utils import (
 # how old/new a deploy status request's timestamp can be to be allowed
 MAX_SKEW_SECONDS = 60
 
+# how long in seconds before we consider a deploy broken and remove it
+DEPLOY_TTL = 3600
+
 
 class DeployConfig(PluginConfig):
-    channel = Option(str)
-    deploy_ttl = Option(int)
-    conch_emoji = Option(str, default=":shell:")
+    organizations = Option(tup)
 
 
 class DeployListener(ProtectedResource):
@@ -65,30 +69,40 @@ class DeployStatusListener(resource.Resource):
             request.setResponseCode(403)
             return ""
 
-        request.setHeader("Content-Type", "application/json")
-        return json.dumps({
-            "time_status": self.monitor.current_time_status(),
-            "busy": bool(self.monitor.deploys),
-            "hold": self.monitor.current_hold,
-        })
+        salon_name = request.args["salon"][0]
+        salons_deferred = self.monitor.salons.by_name(salon_name)
+
+        def send_response(salon):
+            request.setHeader("Content-Type", "application/json")
+            request.write(json.dumps({
+                "time_status": current_time_status(),
+                "busy": bool(salon.deploys),
+                "hold": salon.current_hold,
+            }))
+            request.finish()
+        salons_deferred.addCallback(send_response)
+
+        return server.NOT_DONE_YET
 
 
 class DeployBeganListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
+        salon = request.args["salon"][0]
         id = unicode(request.args['id'][0], 'utf-8')
         who = request.args['who'][0]
         args = request.args['args'][0]
         log_path = unicode(request.args['log_path'][0], 'utf-8')
         count = int(request.args['count'][0])
-        self.monitor.onPushBegan(id, who, args, log_path, count)
+        self.monitor.onPushBegan(salon, id, who, args, log_path, count)
 
 
 class DeployEndedListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
+        salon = request.args["salon"][0]
         id = unicode(request.args['id'][0], 'utf-8')
 
         try:
@@ -98,240 +112,77 @@ class DeployEndedListener(DeployListener):
         else:
             failed_hosts = filter(None, failed_hosts_arg.decode("utf-8").split(","))
 
-        self.monitor.onPushEnded(id, failed_hosts)
+        self.monitor.onPushEnded(salon, id, failed_hosts)
 
 
 class DeployErrorListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
+        salon = request.args["salon"][0]
         id = unicode(request.args['id'][0], 'utf-8')
         error = request.args['error'][0]
-        self.monitor.onPushError(id, error)
+        self.monitor.onPushError(salon, id, error)
 
 
 class DeployAbortedListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
+        salon = request.args["salon"][0]
         id = unicode(request.args['id'][0], 'utf-8')
         reason = request.args['reason'][0]
-        self.monitor.onPushAborted(id, reason)
+        self.monitor.onPushAborted(salon, id, reason)
 
 
 class DeployProgressListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
+        salon = request.args["salon"][0]
         id = unicode(request.args['id'][0], 'utf-8')
         host = request.args['host'][0]
         index = float(request.args['index'][0])
-        self.monitor.onPushProgress(id, host, index)
+        self.monitor.onPushProgress(salon, id, host, index)
 
 
 class OngoingDeploy(object):
     pass
 
 
-class DeployMonitor(object):
-    def __init__(self, config, irc):
-        self.config = config
-        self.irc = irc
+def current_time_status():
+    date = datetime.date.today()
+    time = datetime.datetime.now().time()
+
+    # always after 9am
+    if time < datetime.time(9, 0):
+        return "after_hours"
+
+    if date.weekday() in (0, 1, 2, 3):
+        # monday through thursday, before 4pm
+        if time < datetime.time(16, 0):
+            return "work_time"
+        elif time < datetime.time(17, 0):
+            return "cleanup_time"
+        else:
+            return "after_hours"
+    else:
+        # no work on the weekend
+        return "after_hours"
+
+
+class Salon(object):
+    def __init__(self, db, config):
+        self.db = db
+        self.name = config.name
+        self.channel = config.channel
+        self.allow_deploys = config.allow_deploys
+        self.conch_emoji = config.conch_emoji.encode("utf-8")
         self.deploys = {}
         self.current_hold = None
         self.current_conch = ""
         self.queue = []
         self.current_topic = self._make_topic()
-
-        looper = task.LoopingCall(self._update_topic)
-        looper.start(10)
-
-    def help(self, irc, sender, channel, *args):
-        if channel != self.config.channel:
-            return
-
-        irc.send_message(channel, "see: https://github.com/spladug/harold/wiki")
-
-    def status(self, irc, sender, channel):
-        "Get the status of currently running deploys."
-        if channel != self.config.channel:
-            return
-
-        reply = functools.partial(self.irc.bot.send_message, channel)
-
-        if not self.deploys:
-            reply("@%s: there are currently no active deploys." % sender)
-
-        deploys = sorted(self.deploys.values(), key=lambda d: d.when)
-        for d in deploys:
-            status = ""
-            if d.where:
-                percent = (float(d.completion) / d.host_count) * 100.0
-                status = " (which is on %s -- %d%% done)" % (d.where, percent)
-
-            reply('@%s: %s started deploy "%s"%s at %s with args "%s". log: %s' %
-                  (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
-                   d.args, d.log_path))
-
-    def _hold(self, reason):
-        if not reason:
-            reason_text = "no reason given"
-        else:
-            reason_text = " ".join(reason)
-        self.current_hold = reason_text
-        self._update_topic()
-
-    def hold(self, irc, sender, channel, *reason):
-        if channel != self.config.channel:
-            return
-        self._hold(reason)
-
-    def hold_all(self, irc, sender, channel, *reason):
-        self._hold(reason)
-
-    def _unhold(self):
-        self.current_hold = None
-        self._update_topic()
-
-    def unhold(self, irc, sender, channel, *ignored):
-        if channel != self.config.channel:
-            return
-        self._unhold()
-
-    def unhold_all(self, irc, sender, channel, *ignored):
-        self._unhold()
-
-    def forget(self, irc, sender, channel, deploy_id, *ignored):
-        who, duration = self._remove_deploy(deploy_id)
-
-        if not who:
-            return
-
-        self.irc.bot.send_message(
-            self.config.channel, "forgetting deploy %s" % deploy_id)
-        self._update_topic()
-
-    def acquire(self, irc, sender, channel, *ignored):
-        if channel != self.config.channel:
-            return
-
-        if sender in self.queue:
-            self.irc.bot.send_message(
-                channel, "@%s: you are already in the queue" % sender)
-            return
-        elif self.queue:
-            if len(self.queue) > 1:
-                self.irc.bot.send_message(
-                    channel, "@%s: ok -- you're in the queue" % sender)
-            else:
-                self.irc.bot.send_message(
-                    channel, "@%s: ok -- you're in the queue and you're next so please be ready!" % sender)
-
-        self.queue.append(sender)
-        self._update_topic()
-        self._update_conch()
-
-    def aquire(self, irc, sender, channel, *ignored):
-        if channel != self.config.channel:
-            return
-
-        self.irc.bot.send_message(channel, "what's a quire?")
-        self.acquire(irc, sender, channel)
-
-    def _update_conch(self):
-        if self.queue:
-            new_conch = self.queue[0]
-            if new_conch != self.current_conch:
-                self.irc.bot.send_message(self.config.channel,
-                    "@%s: you have the %s" % (new_conch, self.config.conch_emoji))
-                if len(self.queue) > 1:
-                    self.irc.bot.send_message(
-                        self.config.channel,
-                        "@%s: you're up next. please get ready!" % self.queue[1])
-        else:
-            new_conch = None
-        self.current_conch = new_conch
-
-    def release(self, irc, sender, channel, *ignored):
-        if channel != self.config.channel:
-            return
-
-        if sender not in self.queue:
-            self.irc.bot.send_message(
-                channel, "@%s: you are not in the queue" % sender)
-            return
-
-        self.queue.remove(sender)
-        self._update_conch()
-        self._update_topic()
-
-    def jump(self, irc, sender, channel):
-        if channel != self.config.channel:
-            return
-
-        if self.queue and self.queue[0] == sender:
-            self.irc.bot.send_message(
-                channel, "@%s: you already have the %s" % (sender, self.config.conch_emoji))
-            return
-
-        if sender in self.queue:
-            self.queue.remove(sender)
-        self.queue.insert(0, sender)
-        self._update_conch()
-        self._update_topic()
-
-    def enqueue(self, irc, sender, channel, *users):
-        if channel != self.config.channel:
-            return
-
-        for user in users:
-            if user not in self.queue:
-                self.queue.append(user)
-
-        self._update_topic()
-        self._update_conch()
-
-    def kick(self, irc, sender, channel, user):
-        if channel != self.config.channel:
-            return
-
-        if user not in self.queue:
-            self.irc.bot.send_message(
-                channel, "@%s: %s is not in the queue" % (sender, dehilight(user)))
-            return
-
-        self.queue.remove(user)
-        self._update_conch()
-        self._update_topic()
-
-        if user == sender:
-            self.irc.bot.send_message(
-                channel, ":nelson: stop kicking yourself! stop kicking yourself!")
-
-    def refresh(self, irc, sender, channel):
-        if channel != self.config.channel:
-            return
-        self._update_topic(force=True)
-
-    def current_time_status(self):
-        date = datetime.date.today()
-        time = datetime.datetime.now().time()
-
-        # always after 9am
-        if time < datetime.time(9, 0):
-            return "after_hours"
-
-        if date.weekday() in (0, 1, 2, 3):
-            # monday through thursday, before 4pm
-            if time < datetime.time(16, 0):
-                return "work_time"
-            elif time < datetime.time(17, 0):
-                return "cleanup_time"
-            else:
-                return "after_hours"
-        else:
-            # no work on the weekend
-            return "after_hours"
 
     def _make_topic(self):
         deploy_count = len(self.deploys)
@@ -340,7 +191,7 @@ class DeployMonitor(object):
             if self.current_hold is not None:
                 status = ":no_entry_sign: deploys ON HOLD (%s)" % self.current_hold
             else:
-                time_status = self.current_time_status()
+                time_status = current_time_status()
 
                 if time_status == "work_time":
                     status = ":office: working hours, normal deploy rules apply"
@@ -356,17 +207,43 @@ class DeployMonitor(object):
 
         return " | ".join((
             status,
-            "%s has the %s" % ("@" + self.queue[0] if self.queue else "no one", self.config.conch_emoji),
+            "%s has the %s" % ("@" + self.queue[0] if self.queue else "no one", self.conch_emoji),
             "queue: %s" % (", ".join(map(dehilight, self.queue[1:])) or "<empty>"),
         ))
 
-    def _update_topic(self, force=False):
+    def update_topic(self, irc, force=False):
+        if not self.allow_deploys:
+            return
+
         new_topic = self._make_topic()
         if force or new_topic != self.current_topic:
-            self.irc.bot.set_topic(self.config.channel, new_topic)
+            irc.set_topic(self.channel, new_topic)
             self.current_topic = new_topic
 
-    def _remove_deploy(self, id):
+    def update_conch(self, irc):
+        if self.queue:
+            new_conch = self.queue[0]
+            if new_conch != self.current_conch:
+                irc.send_message(self.channel, "@%s: you have the %s" % (new_conch, self.conch_emoji))
+                if len(self.queue) > 1:
+                    irc.send_message(self.channel, "@%s: you're up next. please get ready!" % self.queue[1])
+        else:
+            new_conch = None
+        self.current_conch = new_conch
+
+    def hold(self, irc, reason):
+        if not reason:
+            reason_text = "no reason given"
+        else:
+            reason_text = " ".join(reason)
+        self.current_hold = reason_text
+        self.update_topic(irc)
+
+    def unhold(self, irc):
+        self.current_hold = None
+        self.update_topic(irc)
+
+    def remove_deploy(self, id):
         deploy = self.deploys.get(id)
         if not deploy:
             return None, None
@@ -377,7 +254,363 @@ class DeployMonitor(object):
         del self.deploys[id]
         return deploy.who, datetime.datetime.now() - deploy.when
 
-    def onPushBegan(self, id, who, args, log_path, count):
+    @inlineCallbacks
+    def all_repos(self):
+        repos = yield self.db.get_salon_repositories(self.name)
+        returnValue(repos)
+
+    @inlineCallbacks
+    def add_repo(self, repo_name):
+        yield self.db.add_repository(self.name, repo_name)
+
+    @inlineCallbacks
+    def remove_repo(self, repo_name):
+        yield self.db.remove_repository(self.name, repo_name)
+
+
+class SalonManager(object):
+    def __init__(self, salon_config_db):
+        self.salon_config_db = salon_config_db
+        self.salons = {}
+
+    @inlineCallbacks
+    def all(self):
+        salon_configs = yield self.salon_config_db.get_salons()
+        for salon_config in salon_configs:
+            if "#" + salon_config.name not in self.salons:
+                self.salons["#" + salon_config.name] = Salon(
+                    self.salon_config_db,
+                    salon_config,
+                )
+        returnValue(self.salons.values())
+
+    @inlineCallbacks
+    def by_channel(self, channel_name):
+        yield self.all()
+        returnValue(self.salons.get(channel_name))
+
+    @inlineCallbacks
+    def by_name(self, name):
+        salon = yield self.by_channel(u"#" + name)
+        returnValue(salon)
+
+    @inlineCallbacks
+    def create(self, channel_name, emoji):
+        config = yield self.salon_config_db.create_salon(
+            channel_name.lstrip("#"),
+            emoji,
+        )
+        new_salon = Salon(self.salon_config_db, config)
+        self.salons[channel_name] = new_salon
+        returnValue(new_salon)
+
+    @inlineCallbacks
+    def destroy(self, channel_name):
+        yield self.salon_config_db.delete_salon(channel_name.lstrip("#"))
+        del self.salons[channel_name]
+
+
+class DeployMonitor(object):
+    def __init__(self, config, irc, salons):
+        self.config = config
+        self.irc = irc
+        self.salons = SalonManager(salons)
+
+        looper = task.LoopingCall(self._update_topics)
+        looper.start(10)
+
+    @inlineCallbacks
+    def _update_topics(self):
+        salons = yield self.salons.all()
+        for salon in salons:
+            salon.update_topic(self.irc.bot)
+
+    @inlineCallbacks
+    def salonify(self, irc, sender, channel, *args):
+        if not args:
+            irc.send_message(channel, "USAGE: salonify :emoji_name:")
+            return
+        emoji = args[0]
+
+        salon = yield self.salons.by_channel(channel)
+        if salon:
+            irc.send_message(channel, "This channel is already a salon!")
+            return
+
+        if not channel.endswith("-salon"):
+            irc.send_message(channel, "Salon channel names should end with -salon")
+            return
+
+        if not re.match("^:[^:]+:$", emoji):
+            irc.send_message(channel, "That doesn't look like a valid emoji.")
+            return
+
+        new_salon = yield self.salons.create(channel, emoji)
+        new_salon.update_topic(irc, force=True)
+
+    @inlineCallbacks
+    def desalonify(self, irc, sender, channel, *ignored):
+        salon = yield self.salons.by_channel(channel)
+        if not salon:
+            return
+
+        try:
+            yield self.salons.destroy(channel)
+            irc.set_topic(channel, "This channel is no longer a salon.")
+        except WouldOrphanRepositoriesError:
+            irc.send_message(channel, "Desalonifying this room would orphan "
+                             "repositories. Please use the 'repository' "
+                             "command to rehome them first.")
+
+    @inlineCallbacks
+    def repository(self, irc, sender, channel, subcommand, *args):
+        salon = yield self.salons.by_channel(channel)
+        if not salon:
+            return
+
+        all_repos = yield salon.all_repos()
+        all_repo_names = [r.name for r in all_repos]
+
+        if subcommand == "list":
+            if all_repos:
+                chunks = ["This salon manages: "]
+
+                # determined empirically for slack :(
+                MAX_IRC_MESSAGE_LENGTH = 340
+
+                for repo in sorted(all_repo_names):
+                    length = sum(len(chunk)+2 for chunk in chunks)
+                    if length + len(repo) > MAX_IRC_MESSAGE_LENGTH:
+                        irc.send_message(channel, chunks[0] + ", ".join(chunks[1:]))
+                        chunks = ["and "]
+
+                    chunks.append(repo)
+
+                if chunks:
+                    irc.send_message(channel, chunks[0] + ", ".join(chunks[1:]))
+            else:
+                irc.send_message(channel, "This salon manages no repositories")
+        elif subcommand == "add":
+            repo_name = args[0]
+
+            org, sep, repo = repo_name.partition("/")
+            if sep != "/":
+                irc.send_message(channel, "You must specify a full repository "
+                                 "name with organization (like "
+                                 "reddit/error-pages).")
+                return
+            elif org not in self.config.organizations:
+                irc.send_message(channel, "I can only watch repositories in "
+                                 "one of the following organizations: " +
+                                 ", ".join(self.config.organizations))
+                return
+
+            if repo_name not in all_repo_names:
+                salon.add_repo(repo_name)
+                irc.send_message(channel, "This salon will now watch `%s`" % repo_name)
+            else:
+                irc.send_message(channel, "This salon is already watching `%s`" % repo_name)
+        elif subcommand == "remove":
+            repo_name = args[0]
+            all_repo_names_lower = [n.lower() for n in all_repo_names]
+
+            if repo_name.lower() in all_repo_names_lower:
+                salon.remove_repo(repo_name)
+                irc.send_message(channel, "This salon will no longer watch `%s`" % repo_name)
+            else:
+                irc.send_message(channel, "This salon is not watching `%s`" % repo_name)
+        else:
+            irc.send_message(channel, "Unknown repository command.")
+
+    @inlineCallbacks
+    def help(self, irc, sender, channel, *args):
+        salon = yield self.salons.by_channel(channel)
+        if not salon:
+            return
+
+        irc.send_message(channel, "see: https://github.com/spladug/harold/wiki")
+
+    @inlineCallbacks
+    def status(self, irc, sender, channel):
+        "Get the status of currently running deploys."
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+
+        reply = functools.partial(self.irc.bot.send_message, channel)
+
+        if not salon.deploys:
+            reply("@%s: there are currently no active deploys." % sender)
+
+        deploys = sorted(salon.deploys.values(), key=lambda d: d.when)
+        for d in deploys:
+            status = ""
+            if d.where:
+                percent = (float(d.completion) / d.host_count) * 100.0
+                status = " (which is on %s -- %d%% done)" % (d.where, percent)
+
+            reply('@%s: %s started deploy "%s"%s at %s with args "%s". log: %s' %
+                  (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
+                   d.args, d.log_path))
+
+    @inlineCallbacks
+    def status_all(self, irc, sender, channel):
+        salons = yield self.salons.all()
+        for salon in sorted(salons, key=lambda s: s.name):
+            if salon.allow_deploys:
+                in_queue = len(salon.queue)
+                deploys = len(salon.deploys)
+
+                if in_queue == deploys == 0:
+                    irc.send_message(channel, "%s is quiet :heavy_check_mark:" % (salon.channel))
+                else:
+                    irc.send_message(channel, "%s has %d deploy(s) active and %d in queue :hourglass:" % (
+                        salon.channel, deploys, in_queue))
+            else:
+                irc.send_message(channel, "%s does not allow deploys :heavy_check_mark:" % salon.channel)
+
+    @inlineCallbacks
+    def hold(self, irc, sender, channel, *reason):
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+        salon.hold(irc, reason)
+
+    @inlineCallbacks
+    def hold_all(self, irc, sender, channel, *reason):
+        salons = yield self.salons.all()
+        for salon in salons:
+            salon.hold(irc, reason)
+
+    @inlineCallbacks
+    def unhold(self, irc, sender, channel, *ignored):
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+        salon.unhold(irc)
+
+    @inlineCallbacks
+    def unhold_all(self, irc, sender, channel, *ignored):
+        salons = yield self.salons.all()
+        for salon in salons:
+            salon.unhold(irc)
+
+    @inlineCallbacks
+    def acquire(self, irc, sender, channel, *ignored):
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+
+        if sender in salon.queue:
+            irc.send_message(channel, "@%s: you are already in the queue" % sender)
+            return
+
+        if salon.queue:
+            if len(salon.queue) > 1:
+                irc.send_message(channel, "@%s: ok -- you're in the queue" % sender)
+            else:
+                irc.send_message(channel, "@%s: ok -- you're in the queue and you're next so please be ready!" % sender)
+
+        salon.queue.append(sender)
+        salon.update_topic(irc)
+        salon.update_conch(irc)
+
+    @inlineCallbacks
+    def release(self, irc, sender, channel, *ignored):
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+
+        if sender not in salon.queue:
+            irc.send_message(channel, "@%s: you are not in the queue" % sender)
+            return
+
+        salon.queue.remove(sender)
+        salon.update_conch(irc)
+        salon.update_topic(irc)
+
+    @inlineCallbacks
+    def jump(self, irc, sender, channel):
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+
+        if salon.queue and salon.queue[0] == sender:
+            irc.send_message(channel, "@%s: you already have the %s" % (sender, salon.conch_emoji))
+            return
+
+        if sender in salon.queue:
+            salon.queue.remove(sender)
+        salon.queue.insert(0, sender)
+        salon.update_conch(irc)
+        salon.update_topic(irc)
+
+    @inlineCallbacks
+    def notready(self, irc, sender, channel, *args):
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+
+        if not salon.queue or salon.queue[0] != sender:
+            irc.send_message(channel, "@%s: you do not have the %s" % (sender, salon.conch_emoji))
+            return
+
+        if len(salon.queue) < 2:
+            irc.send_message(channel, "@%s: no one else is in the queue, no rush" % (sender,))
+
+        salon.queue[0], salon.queue[1] = salon.queue[1], salon.queue[0]
+        salon.update_conch(irc)
+        salon.update_topic(irc)
+
+    @inlineCallbacks
+    def enqueue(self, irc, sender, channel, *users):
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+
+        for user in users:
+            if user not in salon.queue:
+                salon.queue.append(user)
+
+        salon.update_topic(irc)
+        salon.update_conch(irc)
+
+    @inlineCallbacks
+    def kick(self, irc, sender, channel, user):
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+
+        if user not in salon.queue:
+            irc.send_message(channel, "@%s: %s is not in the queue" % (sender, dehilight(user)))
+            return
+
+        salon.queue.remove(user)
+        salon.update_conch(irc)
+        salon.update_topic(irc)
+
+        if user == sender:
+            irc.send_message(channel, ":nelson: stop kicking yourself! stop kicking yourself!")
+
+    @inlineCallbacks
+    def refresh(self, irc, sender, channel):
+        salon = yield self.salons.by_channel(channel)
+        if not (salon and salon.allow_deploys):
+            return
+        salon.update_topic(irc, force=True)
+
+    @inlineCallbacks
+    def refresh_all(self, irc, sender, channel):
+        salons = yield self.salons.all()
+        for salon in salons:
+            salon.update_topic(irc, force=True)
+
+    @inlineCallbacks
+    def onPushBegan(self, salon_name, id, who, args, log_path, count):
+        salon = yield self.salons.by_name(salon_name)
+        if not salon:
+            return
+
         deploy = OngoingDeploy()
         deploy.id = id
         deploy.when = datetime.datetime.now()
@@ -388,21 +621,26 @@ class DeployMonitor(object):
         deploy.where = None
         deploy.completion = None
         deploy.host_count = count
-        deploy.expirator = reactor.callLater(self.config.deploy_ttl,
-                                             self._remove_deploy, id)
-        self.deploys[id] = deploy
+        deploy.expirator = reactor.callLater(DEPLOY_TTL, salon.remove_deploy, id)
 
-        self._update_topic()
-        self.irc.bot.send_message(self.config.channel,
+        salon.deploys[id] = deploy
+        salon.update_topic(self.irc.bot)
+
+        self.irc.bot.send_message(salon.channel,
                                   '@%s started deploy "%s" '
                                   "with args %s" % (who, id, args))
 
-    def onPushProgress(self, id, host, index):
-        deploy = self.deploys.get(id)
+    @inlineCallbacks
+    def onPushProgress(self, salon_name, id, host, index):
+        salon = yield self.salons.by_name(salon_name)
+        if not salon:
+            return
+
+        deploy = salon.deploys.get(id)
         if not deploy:
             return
 
-        deploy.expirator.delay(self.config.deploy_ttl)
+        deploy.expirator.delay(DEPLOY_TTL)
         deploy.completion = index
         deploy.where = host
 
@@ -418,63 +656,89 @@ class DeployMonitor(object):
         if percent < (deploy.quadrant * .25):
             return
 
-        self.irc.bot.send_message(self.config.channel,
+        self.irc.bot.send_message(salon.channel,
                                   """deploy "%s" by @%s is %d%% complete.""" %
                                   (id, deploy.who, deploy.quadrant * 25))
         deploy.quadrant += 1
 
-    def onPushEnded(self, id, failed_hosts):
-        deploy = self.deploys.get(id)
-        who, duration = self._remove_deploy(id)
+    @inlineCallbacks
+    def onPushEnded(self, salon_name, id, failed_hosts):
+        salon = yield self.salons.by_name(salon_name)
+        if not salon:
+            return
+
+        deploy = salon.deploys.get(id)
+        who, duration = salon.remove_deploy(id)
 
         if not who:
             return
 
         self.irc.bot.send_message(
-            self.config.channel,
+            salon.channel,
             """deploy "%s" by @%s is complete. """
             "Took %s." % (id, who, pretty_and_accurate_time_span(duration))
         )
-        self._update_topic()
+        salon.update_topic(self.irc.bot)
 
         if failed_hosts:
             self.irc.bot.send_message(
                 "#monitoring",
                 "Deploy `%s` in %s encountered errors on the "
                     "following hosts: %s. See %s for more information." % (
-                        id, self.config.channel, ", ".join(sorted(failed_hosts)),
+                        id, salon.channel, ", ".join(sorted(failed_hosts)),
                         deploy.log_path)
             )
 
-    def onPushError(self, id, error):
-        deploy = self.deploys.get(id)
+    @inlineCallbacks
+    def onPushError(self, salon_name, id, error):
+        salon = yield self.salons.by_name(salon_name)
+        if not salon:
+            return
+
+        deploy = salon.deploys.get(id)
         if not deploy:
             return
 
-        deploy.expirator.delay(self.config.deploy_ttl)
-        self.irc.bot.send_message(self.config.channel,
+        deploy.expirator.delay(DEPLOY_TTL)
+        self.irc.bot.send_message(salon.channel,
                                   ("""deploy "%s" by @%s encountered """
                                    "an error: %s") %
                                   (id, deploy.who, error))
 
-    def onPushAborted(self, id, reason):
-        who, duration = self._remove_deploy(id)
+    @inlineCallbacks
+    def onPushAborted(self, salon_name, id, reason):
+        salon = yield self.salons.by_name(salon_name)
+        if not salon:
+            return
+
+        who, duration = salon.remove_deploy(id)
 
         if not who:
             return
 
-        self.irc.bot.send_message(self.config.channel,
+        self.irc.bot.send_message(salon.channel,
                                   """deploy "%s" by @%s aborted (%s)""" %
                                   (id, who, reason))
-        self._update_topic()
+        salon.update_topic(self.irc.bot)
+
+    @inlineCallbacks
+    def forget(self, irc, sender, channel, deploy_id, *ignored):
+        salon = yield self.salons.by_channel(channel)
+        if not salon:
+            return
+
+        who, duration = salon.remove_deploy(deploy_id)
+
+        if not who:
+            return
+
+        irc.send_message(salon.channel, "forgetting deploy %s" % deploy_id)
+        salon.update_topic(irc)
 
 
-def make_plugin(config, http, irc):
+def make_plugin(config, http, irc, salons):
     deploy_config = DeployConfig(config)
-    monitor = DeployMonitor(deploy_config, irc)
-
-    # yay channels
-    irc.channels.add(deploy_config.channel)
+    monitor = DeployMonitor(deploy_config, irc, salons)
 
     # set up http api
     deploy_root = resource.Resource()
@@ -487,17 +751,22 @@ def make_plugin(config, http, irc):
     deploy_root.putChild('progress', DeployProgressListener(http, monitor))
 
     # register our irc commands
+    irc.register_command(monitor.salonify)
+    irc.register_command(monitor.desalonify)
+    irc.register_command(monitor.repository)
+    irc.register_command(monitor.help)
     irc.register_command(monitor.status)
+    irc.register_command(monitor.status_all)
     irc.register_command(monitor.hold)
     irc.register_command(monitor.unhold)
     irc.register_command(monitor.hold_all)
     irc.register_command(monitor.unhold_all)
     irc.register_command(monitor.acquire)
-    irc.register_command(monitor.aquire)
     irc.register_command(monitor.release)
     irc.register_command(monitor.jump)
+    irc.register_command(monitor.notready)
+    irc.register_command(monitor.enqueue)
     irc.register_command(monitor.kick)
     irc.register_command(monitor.refresh)
-    irc.register_command(monitor.help)
-    irc.register_command(monitor.enqueue)
+    irc.register_command(monitor.refresh_all)
     irc.register_command(monitor.forget)

@@ -7,11 +7,13 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 
 from harold.plugins.http import ProtectedResource
 from harold.shorturl import UrlShortener
-from harold.conf import PluginConfig, Option, tup
 from harold.utils import dehilight
 
 
-REPOSITORY_PREFIX = 'harold:repository:'
+# size of push at which we just emit a single bundled message instead of
+# announcing each individual commit
+_BUNDLE_THRESHOLD = 3
+
 
 # https://github.com/reddit/reddit/pull/33#issuecomment-767815
 _PULL_REQUEST_URL_RE = re.compile(r"""
@@ -37,38 +39,6 @@ def _extract_reviewers(body):
     return reviewers
 
 
-class GitHubConfig(object):
-    def __init__(self, config):
-        self.repositories_by_name = {}
-        self.channels = set()
-
-        for section in config.parser.sections():
-            if not section.startswith(REPOSITORY_PREFIX):
-                continue
-
-            repository = RepositoryConfig(config, section=section)
-            repository.name = section[len(REPOSITORY_PREFIX):]
-            self.repositories_by_name[repository.name] = repository
-            self.channels.add(repository.channel)
-
-        mappings = config.parser.items("harold:plugin:github")
-        self.nicks_by_user = dict(mappings)
-
-    def nick_by_user(self, user):
-        return self.nicks_by_user.get(user.lower(), user)
-
-
-class RepositoryConfig(PluginConfig):
-    channel = Option(str)
-    format = Option(str, '%(author)s committed %(commit_id)s (%(url)s) to ' +
-                         '%(repository)s: %(summary)s')
-    branches = Option(tup, [])
-    max_commit_count = Option(int, default=3)
-    bundled_format = Option(str, '%(authors)s made %(commit_count)d commits ' +
-                                 '(%(commit_range)s - %(url)s) to ' +
-                                 '%(repository)s')
-
-
 def _get_commit_author(commit):
     "Return the author's github account or, if not present, full name."
     author_info = commit['author']
@@ -76,31 +46,33 @@ def _get_commit_author(commit):
 
 
 class PushDispatcher(object):
-    def __init__(self, config, bot, shortener):
-        self.config = config
+    def __init__(self, bot, shortener, salons):
         self.bot = bot
         self.shortener = shortener
+        self.salons = salons
 
+    @inlineCallbacks
     def _dispatch_commit(self, repository, branch, commit):
-        d = self.shortener.make_short_url(commit['url'])
+        short_url = yield self.shortener.make_short_url(commit['url'])
+        author = yield self.salons.get_nick_for_user(_get_commit_author(commit))
 
-        def onUrlShortened(short_url):
-            self.bot.send_message(repository.channel,
-                                  repository.format % {
-                'repository': repository.name,
-                'branch': branch,
+        self.bot.send_message(repository.channel,
+                              repository.format % {
+            'repository': repository.name,
+            'branch': branch,
 
-                'commit_id': commit['id'][:7],
-                'url': short_url,
-                'author': self.config.nick_by_user(_get_commit_author(commit)),
-                'summary': commit['message'].splitlines()[0]
-            })
-        d.addCallback(onUrlShortened)
+            'commit_id': commit['id'][:7],
+            'url': short_url,
+            'author': author,
+            'summary': commit['message'].splitlines()[0]
+        })
 
+    @inlineCallbacks
     def _dispatch_bundle(self, info, repository, branch, commits):
         authors = collections.Counter()
         for commit in commits:
-            authors[self.config.nick_by_user(_get_commit_author(commit))] += 1
+            nick = yield self.salons.get_nick_for_user(_get_commit_author(commit))
+            authors[nick] += 1
         before = info['before']
         after = info['after']
         commit_range = before[:7] + '..' + after[:7]
@@ -108,39 +80,40 @@ class PushDispatcher(object):
                                                          before,
                                                          after)
 
-        d = self.shortener.make_short_url(url)
+        short_url = yield self.shortener.make_short_url(url)
+        self.bot.send_message(repository.channel,
+                              repository.bundled_format % {
+            'repository': repository.name,
+            'branch': branch,
+            'authors': ', '.join(a for a, c in authors.most_common()),
+            'commit_count': len(commits),
+            'commit_range': commit_range,
+            'url': short_url,
+        })
 
-        def onUrlShortened(short_url):
-            self.bot.send_message(repository.channel,
-                                  repository.bundled_format % {
-                'repository': repository.name,
-                'branch': branch,
-                'authors': ', '.join(a for a, c in authors.most_common()),
-                'commit_count': len(commits),
-                'commit_range': commit_range,
-                'url': short_url,
-            })
-        d.addCallback(onUrlShortened)
-
+    @inlineCallbacks
     def _get_repository(self, parsed):
         repository_name = parsed["repository"]["full_name"]
-        return self.config.repositories_by_name.get(repository_name)
+        repo = yield self.salons.get_repository(repository_name)
+        returnValue(repo)
 
+    @inlineCallbacks
     def dispatch_ping(self, parsed):
-        repository = self._get_repository(parsed)
+        repository = yield self._get_repository(parsed)
         if repository:
             self.bot.describe(
                 repository.channel, "is now watching %s" % repository.name)
 
+    @inlineCallbacks
     def dispatch_push(self, parsed):
-        repository = self._get_repository(parsed)
+        repository = yield self._get_repository(parsed)
         if not repository:
             return
         branch = parsed['ref'].split('/')[-1]
         commits = parsed['commits']
 
         if not repository.branches or branch in repository.branches:
-            if len(commits) <= repository.max_commit_count:
+            if len(commits) <= _BUNDLE_THRESHOLD:
                 for commit in commits:
                     self._dispatch_commit(repository, branch, commit)
             else:
@@ -265,8 +238,9 @@ class SalonDatabase(object):
                 "timestamp": timestamp,
                 "state": "unreviewed",
             })
+            returnValue(True)
         except self.database.module.IntegrityError:
-            pass
+            returnValue(False)
 
     @inlineCallbacks
     def remove_review_request(self, repo, pull_request_id, username):
@@ -327,23 +301,23 @@ class Salon(object):
     ]
 
     messages_by_emoji = {
-        ":fish:": "%(owner)s, %(user)s just :fish:'d your pull request "
+        ":fish:": "%(owner)s: %(user)s just :fish:'d your pull request "
                   "%(repo)s#%(id)s (%(short_url)s)",
-        ":nail_care:": "%(owner)s, %(user)s has finished this review pass on "
+        ":nail_care:": "%(owner)s: %(user)s has finished this review pass on "
                        "pull request %(repo)s#%(id)s (%(short_url)s)",
         ":haircut:": "%(reviewers)s: %(owner_de)s is ready for further review of "
                      "pull request %(repo)s#%(id)s (%(short_url)s)",
         ":eyeglasses:": "%(reviewers)s: %(user)s has requested your review "
                         "of %(repo)s#%(id)s (%(short_url)s)",
-        ":running:": "%(owner)s, %(user)s is unable to review %(repo)s#%(id)s "
+        ":running:": "%(owner)s: %(user)s is unable to review %(repo)s#%(id)s "
                      "(%(short_url)s) at this time. Please summon a new "
                      "reviewer.",
     }
 
-    def __init__(self, config, bot, shortener, database):
-        self.config = config
+    def __init__(self, bot, shortener, salons, database):
         self.bot = bot
         self.shortener = shortener
+        self.salons = salons
         self.database = SalonDatabase(database)
 
     @inlineCallbacks
@@ -351,9 +325,9 @@ class Salon(object):
         pull_request = parsed["pull_request"]
         timestamp = _parse_timestamp(pull_request["created_at"])
         repository_name = parsed["repository"]["full_name"]
-        repository = self.config.repositories_by_name[repository_name]
+        repository = yield self.salons.get_repository(repository_name)
         pull_request_id = parsed["number"]
-        sender = self.config.nick_by_user(parsed["sender"]["login"])
+        sender = yield self.salons.get_nick_for_user(parsed["sender"]["login"])
 
         yield self.database.process_pullrequest(pull_request, repository_name)
 
@@ -361,22 +335,37 @@ class Salon(object):
         short_url = yield self.shortener.make_short_url(html_link)
 
         if parsed["action"] == "review_requested":
+            if "requested_reviewer" not in parsed:
+                return
+
             username = parsed["requested_reviewer"]["login"]
-            yield self.database.add_review_request(
+            is_new_request = yield self.database.add_review_request(
                 repo=repository_name,
                 pull_request_id=pull_request_id,
                 username=username,
                 timestamp=timestamp,
             )
 
-            message = self.messages_by_emoji[":eyeglasses:"]
-            self.bot.send_message(repository.channel, message % {
-                "reviewers": self.config.nick_by_user(username),
-                "user": dehilight(sender),
-                "repo": repository_name,
-                "id": pull_request_id,
-                "short_url": short_url,
-            })
+            if is_new_request:
+                message = self.messages_by_emoji[":eyeglasses:"]
+            else:
+                message = self.messages_by_emoji[":haircut:"]
+
+                yield self.database.update_review_state(
+                    repository_name, pull_request_id, "",
+                    timestamp, parsed["sender"]["login"], ":haircut:")
+
+            reviewer = yield self.salons.get_nick_for_user(username)
+
+            if repository:
+                self.bot.send_message(repository.channel, message % {
+                    "reviewers": reviewer,
+                    "owner_de": dehilight(sender),
+                    "user": dehilight(sender),
+                    "repo": repository_name,
+                    "id": pull_request_id,
+                    "short_url": short_url,
+                })
         elif parsed["action"] == "review_request_removed":
             username = parsed["requested_reviewer"]["login"]
             yield self.database.remove_review_request(
@@ -387,21 +376,26 @@ class Salon(object):
         elif parsed["action"] == "opened":
             message = ("%(user)s opened pull request #%(id)d (%(short_url)s) "
                        "on %(repo)s: %(title)s")
-            self.bot.send_message(repository.channel, message % dict(
-                user=dehilight(sender),
-                id=pull_request_id,
-                short_url=short_url,
-                repo=repository_name,
-                title=pull_request["title"][:72],
-            ))
 
-            reviewers = _extract_reviewers(pull_request["body"])
-            reviewers = map(self.config.nick_by_user, reviewers)
-            if reviewers:
+            if repository:
+                self.bot.send_message(repository.channel, message % dict(
+                    user=dehilight(sender),
+                    id=pull_request_id,
+                    short_url=short_url,
+                    repo=repository_name,
+                    title=pull_request["title"][:72],
+                ))
+
+            reviewer_usernames = _extract_reviewers(pull_request["body"])
+            reviewers = []
+            for reviewer_username in reviewer_usernames:
+                nick = yield self.salons.get_nick_for_user(reviewer_username)
+                reviewers.append(nick)
+            if repository and reviewers:
                 self.bot.send_message(repository.channel,
                                       "%(reviewers)s: %(user)s has requested "
                                       "your review of ^" % {
-                                          "reviewers": ", ".join(reviewers),
+                                          "reviewers": " & ".join(reviewers),
                                           "user": dehilight(sender),
                                       })
 
@@ -438,7 +432,7 @@ class Salon(object):
             return
 
         repository_name = parsed["repository"]["full_name"]
-        repository = self.config.repositories_by_name[repository_name]
+        repository = yield self.salons.get_repository(repository_name)
         html_link = parsed["issue"]["pull_request"]["html_url"]
         short_url = yield self.shortener.make_short_url(html_link)
         pr_id = int(parsed["issue"]["number"])
@@ -448,9 +442,10 @@ class Salon(object):
             repository_name, pr_id, parsed["comment"]["body"],
             timestamp, parsed["sender"]["login"], emoji)
 
-        owner = self.config.nick_by_user(parsed["issue"]["user"]["login"])
+        owner = yield self.salons.get_nick_for_user(parsed["issue"]["user"]["login"])
+        user = yield self.salons.get_nick_for_user(parsed["sender"]["login"])
         message_info = dict(
-            user=dehilight(self.config.nick_by_user(parsed["sender"]["login"])),
+            user=dehilight(user),
             owner=owner,
             owner_de=dehilight(owner),
             id=str(pr_id),
@@ -467,11 +462,15 @@ class Salon(object):
                 reviewers = yield self.database.get_reviewers(repository_name,
                                                               pr_id)
 
-            mapped_reviewers = map(self.config.nick_by_user, reviewers)
-            message_info["reviewers"] = ", ".join(mapped_reviewers or
+            mapped_reviewers = []
+            for reviewer_username in reviewers:
+                nick = yield self.salons.get_nick_for_user(reviewer_username)
+                mapped_reviewers.append(nick)
+            message_info["reviewers"] = " & ".join(mapped_reviewers or
                                                   ["(no one in particular)"])
 
-        self.bot.send_message(repository.channel, message % message_info)
+        if repository:
+            self.bot.send_message(repository.channel, message % message_info)
 
     @inlineCallbacks
     def dispatch_review(self, parsed):
@@ -479,7 +478,7 @@ class Salon(object):
             return
 
         repository_name = parsed["repository"]["full_name"]
-        repository = self.config.repositories_by_name[repository_name]
+        repository = yield self.salons.get_repository(repository_name)
         html_link = parsed["pull_request"]["html_url"]
         short_url = yield self.shortener.make_short_url(html_link)
         pr_id = int(parsed["pull_request"]["number"])
@@ -498,9 +497,10 @@ class Salon(object):
             repository_name, pr_id, parsed["review"]["body"],
             timestamp, parsed["sender"]["login"], emoji)
 
-        owner = self.config.nick_by_user(parsed["pull_request"]["user"]["login"])
+        owner = yield self.salons.get_nick_for_user(parsed["pull_request"]["user"]["login"])
+        user = yield self.salons.get_nick_for_user(parsed["sender"]["login"])
         message_info = dict(
-            user=dehilight(self.config.nick_by_user(parsed["sender"]["login"])),
+            user=dehilight(user),
             owner=owner,
             owner_de=dehilight(owner),
             id=str(pr_id),
@@ -510,22 +510,28 @@ class Salon(object):
 
         if "%(reviewers)s" in message:
             reviewers = yield self.database.get_reviewers(repository_name, pr_id)
-            mapped_reviewers = map(self.config.nick_by_user, reviewers)
-            message_info["reviewers"] = ", ".join(mapped_reviewers or
+            mapped_reviewers = []
+            for reviewer_username in reviewers:
+                nick = yield self.salons.get_nick_for_user(reviewer_username)
+                mapped_reviewers.append(nick)
+            message_info["reviewers"] = " & ".join(mapped_reviewers or
                                                   ["(no one in particular)"])
 
-        self.bot.send_message(repository.channel, message % message_info)
+        if repository:
+            self.bot.send_message(repository.channel, message % message_info)
 
 
 class GitHubListener(ProtectedResource):
     isLeaf = True
 
-    def __init__(self, config, http, bot, database):
+    def __init__(self, http, bot, salons, database):
         ProtectedResource.__init__(self, http)
         shortener = UrlShortener()
 
-        push_dispatcher = PushDispatcher(config, bot, shortener)
-        salon = Salon(config, bot, shortener, database)
+        self.salons = salons
+
+        push_dispatcher = PushDispatcher(bot, shortener, salons)
+        salon = Salon(bot, shortener, salons, database)
 
         self.dispatchers = {
             "ping": push_dispatcher.dispatch_ping,
@@ -544,11 +550,20 @@ class GitHubListener(ProtectedResource):
             parsed = json.loads(post_data)
             dispatcher(parsed)
 
+    @inlineCallbacks
+    def claim_github_username(self, irc, sender, channel, github_username):
+        yield self.salons.set_nick_for_user(sender, github_username)
+        irc.send_message(channel, "@%s: ok, i'll map @%s on github to you" % (sender, github_username))
 
-def make_plugin(config, http, irc, database=None):
-    gh_config = GitHubConfig(config)
-    for channel in gh_config.channels:
-        irc.channels.add(channel)
+    @inlineCallbacks
+    def disclaim_github_username(self, irc, sender, channel):
+        yield self.salons.set_nick_for_user(sender, None)
+        irc.send_message(channel, "@%s: ok, i won't remap your name anymore" % (sender,))
 
-    http.root.putChild('github', GitHubListener(gh_config, http, irc.bot,
-                                                database))
+
+def make_plugin(http, irc, salons, database=None):
+    listener = GitHubListener(http, irc.bot, salons, database)
+
+    http.root.putChild('github', listener)
+    irc.register_command(listener.claim_github_username)
+    irc.register_command(listener.disclaim_github_username)

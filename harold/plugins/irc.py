@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import difflib
 import os
 import traceback
 
@@ -193,6 +194,9 @@ class IrcPlugin(Plugin):
         command, args = (split[1].lower(), split[2:])
         fn = self.commands.get(command)
         if not fn:
+            potential_matches = difflib.get_close_matches(command, self.commands, n=1, cutoff=0.6)
+            if potential_matches:
+                self.bot.send_message(channel, "@%s: did you mean `%s`?" % (sender_nick, potential_matches[0]))
             return
 
         try:
