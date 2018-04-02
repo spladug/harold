@@ -10,7 +10,7 @@ from twisted.application import internet
 
 from harold.dispatcher import Dispatcher
 from harold.plugin import Plugin
-from harold.conf import PluginConfig, Option, tup
+from harold.conf import PluginConfig, Option
 
 
 class IrcConfig(PluginConfig):
@@ -20,7 +20,6 @@ class IrcConfig(PluginConfig):
     host = Option(str)
     port = Option(int, default=6667)
     use_ssl = Option(bool, default=False)
-    channels = Option(tup, default=[])
     userserv_password = Option(str, default=None)
 
 
@@ -66,9 +65,6 @@ class IRCBot(irc.IRCClient):
             self.msg("userserv", "login %s %s" % (self.username,
                                                   self.userserv_password))
 
-        for channel in self.factory.channels:
-            self.join(channel)
-
         self.factory.dispatcher.registerConsumer(self)
 
     def connectionLost(self, *args, **kwargs):
@@ -101,11 +97,10 @@ class IRCBot(irc.IRCClient):
 class IRCBotFactory(protocol.ClientFactory):
     protocol = IRCBot
 
-    def __init__(self, plugin, config, dispatcher, channels):
+    def __init__(self, plugin, config, dispatcher):
         self.plugin = plugin
         self.config = config
         self.dispatcher = dispatcher
-        self.channels = channels
 
     def buildProtocol(self, addr):
         prot = protocol.ClientFactory.buildProtocol(self, addr)
@@ -123,20 +118,6 @@ class IRCBotFactory(protocol.ClientFactory):
 
     def onMessageReceived(self, sender_nick, channel, msg):
         self.plugin.onMessageReceived(sender_nick, channel, msg)
-
-
-class ChannelManager(object):
-    def __init__(self, basic_channels, bot):
-        self.bot = bot
-        self.channels = set(basic_channels)
-
-    def add(self, channel):
-        if channel not in self.channels:
-            self.channels.add(channel)
-            self.bot.join(channel)
-
-    def __iter__(self):
-        return self.channels.__iter__()
 
 
 class IrcPlugin(Plugin):
@@ -176,7 +157,6 @@ class IrcPlugin(Plugin):
 def make_plugin(config, http=None):
     irc_config = IrcConfig(config)
     dispatcher = Dispatcher()
-    channel_manager = ChannelManager(irc_config.channels, dispatcher)
 
     # configure the default irc commands
     p = IrcPlugin()
@@ -184,10 +164,8 @@ def make_plugin(config, http=None):
     p.register_command(debug)
 
     # set up the IRC client
-    irc_factory = IRCBotFactory(p, irc_config, dispatcher, channel_manager)
-    p.config = irc_config
+    irc_factory = IRCBotFactory(p, irc_config, dispatcher)
     p.bot = dispatcher
-    p.channels = channel_manager
     if irc_config.use_ssl:
         context_factory = ssl.ClientContextFactory()
         p.add_service(internet.SSLClient(irc_config.host,
