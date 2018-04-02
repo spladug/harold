@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import difflib
 import os
 import traceback
 
@@ -9,6 +8,7 @@ from twisted.internet import protocol, ssl
 from twisted.application import internet
 
 from harold.dispatcher import Dispatcher
+from harold.handlers import Handlers, NoHandlerError
 from harold.plugin import Plugin
 from harold.conf import PluginConfig, Option
 
@@ -122,11 +122,11 @@ class IRCBotFactory(protocol.ClientFactory):
 
 class IrcPlugin(Plugin):
     def __init__(self):
-        self.commands = {}
+        self._handlers = Handlers()
         super(IrcPlugin, self).__init__()
 
     def register_command(self, handler):
-        self.commands[handler.__name__] = handler
+        self._handlers.register(handler.__name__, handler)
 
     def onMessageReceived(self, sender_nick, channel, msg):
         split = msg.split()
@@ -141,15 +141,12 @@ class IrcPlugin(Plugin):
             return
 
         command, args = (split[1].lower(), split[2:])
-        fn = self.commands.get(command)
-        if not fn:
-            potential_matches = difflib.get_close_matches(command, self.commands, n=1, cutoff=0.6)
-            if potential_matches:
-                self.bot.send_message(channel, "@%s: did you mean `%s`?" % (sender_nick, potential_matches[0]))
-            return
 
         try:
-            fn(self.bot, sender_nick, channel, *args)
+            self.handlers.process(command, self.bot, sender_nick, channel, *args)
+        except NoHandlerError as exc:
+            if exc.close_matches:
+                self.bot.send_message(channel, "@%s: did you mean `%s`?" % (sender_nick, exc.close_matches[0]))
         except:
             traceback.print_exc()
 
