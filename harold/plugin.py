@@ -22,13 +22,22 @@ class Plugin(object):
 
 
 def _import_plugin_modules(config):
-    plugins = {}
+    plugins = {"config": config}
     dependencies = {}
     optional_dependencies = {}
+
+    config.PROVIDES_HAROLD_PLUGINS = ["config"]
 
     for plugin_name in config.plugin_names():
         plugin = importlib.import_module("harold.plugins." + plugin_name)
         plugins[plugin_name] = plugin
+
+        try:
+            plugin.PROVIDES_HAROLD_PLUGINS
+        except AttributeError:
+            plugin.PROVIDES_HAROLD_PLUGINS = [plugin_name]
+        else:
+            plugin.PROVIDES_HAROLD_PLUGINS.insert(0, plugin_name)
 
         args, varargs, kw, defaults = inspect.getargspec(plugin.make_plugin)
 
@@ -42,7 +51,7 @@ def _import_plugin_modules(config):
     return plugins, dependencies, optional_dependencies
 
 
-def _topological_sort(dependencies):
+def _topological_sort(plugins, dependencies):
     dependencies = copy.deepcopy(dependencies)
 
     startup_order = []
@@ -51,9 +60,11 @@ def _topological_sort(dependencies):
         satisfied = satisfied_plugins.pop()
         startup_order.append(satisfied)
 
+        satisfied_plugin = plugins[satisfied]
         for plugin, deps in dependencies.items():
-            if satisfied in deps:
-                deps.remove(satisfied)
+            for provided_interface in satisfied_plugin.PROVIDES_HAROLD_PLUGINS:
+                if provided_interface in deps:
+                    deps.remove(provided_interface)
 
             if len(deps) == 0:
                 satisfied_plugins.append(plugin)
@@ -68,9 +79,14 @@ def load_plugins(config):
     plugins, dependencies, optional_deps = _import_plugin_modules(config)
 
     # verify that we have the necessary plugins set up
+    all_provided_interfaces = set()
+    for p in plugins.itervalues():
+        for i in p.PROVIDES_HAROLD_PLUGINS:
+            all_provided_interfaces.add(i)
+
     for plugin_name, plugin_deps in dependencies.iteritems():
         for dep in plugin_deps:
-            if dep not in plugins and dep != "config":
+            if dep not in all_provided_interfaces:
                 raise PluginDependencyError(plugin_name, dep)
 
     # move optional dependencies to real dependencies for topo sort if we
@@ -83,7 +99,7 @@ def load_plugins(config):
                 print "%s: Discarding optional dependency %r" % (plugin_name,
                                                                  optional_dep)
 
-    startup_order = _topological_sort(dependencies)
+    startup_order = _topological_sort(plugins, dependencies)
 
     initialized_plugins = {'config': config}
     for plugin in startup_order:
@@ -96,7 +112,8 @@ def load_plugins(config):
                     if name in dependencies[plugin])
         p = module.make_plugin(**args)
         if p:
-            initialized_plugins[plugin] = p
+            for provided_interface in module.PROVIDES_HAROLD_PLUGINS:
+                initialized_plugins[provided_interface] = p
 
     return (ip for name, ip in initialized_plugins.iteritems()
             if name != 'config')
