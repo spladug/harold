@@ -7,10 +7,8 @@ import traceback
 from twisted.words.protocols import irc
 from twisted.internet import protocol, ssl
 from twisted.application import internet
-from twisted.web import resource
 
 from harold.dispatcher import Dispatcher
-from harold.plugins.http import ProtectedResource
 from harold.plugin import Plugin
 from harold.conf import PluginConfig, Option, tup
 
@@ -127,36 +125,6 @@ class IRCBotFactory(protocol.ClientFactory):
         self.plugin.onMessageReceived(sender_nick, channel, msg)
 
 
-class MessageListener(ProtectedResource):
-    isLeaf = True
-
-    def __init__(self, http, dispatcher):
-        ProtectedResource.__init__(self, http)
-        self.dispatcher = dispatcher
-
-    def _handle_request(self, request):
-        channel = request.args['channel'][0]
-        try:
-            message = unicode(request.args['message'][0], 'utf-8')
-        except UnicodeDecodeError:
-            return
-        else:
-            self.dispatcher.send_message(channel, message)
-
-
-class SetTopicListener(ProtectedResource):
-    isLeaf = True
-
-    def __init__(self, http, dispatcher):
-        ProtectedResource.__init__(self, http)
-        self.dispatcher = dispatcher
-
-    def _handle_request(self, request):
-        channel = request.args['channel'][0]
-        new_topic = unicode(request.args['topic'][0], 'utf-8')
-        self.dispatcher.set_topic(channel, new_topic)
-
-
 class ChannelManager(object):
     def __init__(self, basic_channels, bot):
         self.bot = bot
@@ -209,13 +177,6 @@ def make_plugin(config, http=None):
     irc_config = IrcConfig(config)
     dispatcher = Dispatcher()
     channel_manager = ChannelManager(irc_config.channels, dispatcher)
-
-    # add the http resources
-    if http:
-        http.root.putChild('message', MessageListener(http, dispatcher))
-        topic_root = resource.Resource()
-        http.root.putChild('topic', topic_root)
-        topic_root.putChild('set', SetTopicListener(http, dispatcher))
 
     # configure the default irc commands
     p = IrcPlugin()
