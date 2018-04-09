@@ -301,8 +301,8 @@ class Salon(object):
     ]
 
     messages_by_emoji = {
-        ":fish:": "%(owner)s: %(user)s just :fish:'d your pull request "
-                  "%(repo)s#%(id)s (%(short_url)s)",
+        ":fish:": "%(owner)s: %(user)s just approved your pull request "
+            "%(repo)s#%(id)s (%(short_url)s) :fish: :fish: :fish:",
         ":nail_care:": "%(owner)s: %(user)s has finished this review pass on "
                        "pull request %(repo)s#%(id)s (%(short_url)s)",
         ":haircut:": "%(reviewers)s: %(owner_de)s is ready for further review of "
