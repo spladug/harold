@@ -195,7 +195,7 @@ class Salon(object):
             if time_status == "work_time":
                 status = ":office: working hours, normal deploy rules apply"
             elif time_status == "cleanup_time":
-                status = ":hand: it's late, fixup/polish deploys only"
+                status = ":hmm: it's late, please be mindful"
             else:
                 status = ":warning: after hours, emergency deploys only"
 
