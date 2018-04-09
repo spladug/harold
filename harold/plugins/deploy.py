@@ -551,14 +551,18 @@ class DeployMonitor(object):
         if not (salon and salon.allow_deploys):
             return
 
-        if not salon.queue or salon.queue[0] != sender:
-            irc.send_message(channel, "@%s: you do not have the %s" % (sender, salon.conch_emoji))
-            return
+        try:
+            old_pos = salon.queue.index(sender)
+        except ValueError:
+            irc.send_message(channel, "@%s: you are not in the queue" % (sender,))
+            returnValue(None)
 
-        if len(salon.queue) < 2:
-            irc.send_message(channel, "@%s: no one else is in the queue, no rush" % (sender,))
+        new_pos = old_pos + 1
+        if new_pos == len(salon.queue):
+            irc.send_message(channel, "@%s: no one is behind you in the queue, no rush" % (sender,))
+            returnValue(None)
 
-        salon.queue[0], salon.queue[1] = salon.queue[1], salon.queue[0]
+        salon.queue[new_pos], salon.queue[old_pos] = salon.queue[old_pos], salon.queue[new_pos]
         salon.update_conch(irc)
         salon.update_topic(irc)
 
