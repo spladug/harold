@@ -187,27 +187,30 @@ class Salon(object):
     def _make_topic(self):
         deploy_count = len(self.deploys)
 
-        if deploy_count == 0:
-            if self.current_hold is not None:
-                status = ":no_entry_sign: deploys ON HOLD (%s)" % self.current_hold
-            else:
-                time_status = current_time_status()
+        if self.current_hold is not None:
+            status = ":no_entry_sign: deploys ON HOLD (%s)" % self.current_hold
+        else:
+            time_status = current_time_status()
 
-                if time_status == "work_time":
-                    status = ":office: working hours, normal deploy rules apply"
-                elif time_status == "cleanup_time":
-                    status = ":hand: it's late, fixup/polish deploys only"
-                else:
-                    status = ":warning: after hours, emergency deploys only"
+            if time_status == "work_time":
+                status = ":office: working hours, normal deploy rules apply"
+            elif time_status == "cleanup_time":
+                status = ":hand: it's late, fixup/polish deploys only"
+            else:
+                status = ":warning: after hours, emergency deploys only"
+
+        if deploy_count == 0:
+            deploy_status = "no active deploys"
         elif deploy_count == 1:
             deploy = self.deploys.values()[0]
-            status = ":hourglass: %s is deploying" % deploy.who
+            deploy_status = "%s is deploying" % deploy.who
         else:  # > 1
-            status = ":hourglass: %d deploys in progress" % deploy_count
+            deploy_status = "%d deploys in progress" % deploy_count
 
         return " | ".join((
             status,
             "%s has the %s" % ("@" + self.queue[0] if self.queue else "no one", self.conch_emoji),
+            deploy_status,
             "queue: %s" % (", ".join(map(dehilight, self.queue[1:])) or "<empty>"),
         ))
 
