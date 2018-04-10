@@ -80,6 +80,8 @@ class SlackWebClient(object):
         self._queues = collections.defaultdict(list)
         self._retry_timers = {}
 
+        self._pool._factory.noisy = False
+
     @inlineCallbacks
     def make_request(self, method, **params):
         if not self._retry_timers.get(method):
@@ -220,6 +222,7 @@ class SlackClientProtocol(WebSocketClientProtocol):
 
 class SlackClientFactory(WebSocketClientFactory):
     protocol = SlackClientProtocol
+    noisy = False
 
     def __init__(self, plugin, **kwargs):
         self._plugin = plugin

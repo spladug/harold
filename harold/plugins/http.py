@@ -60,6 +60,7 @@ def make_plugin(config):
     harold = resource.Resource()
     root.putChild('harold', harold)
     site = server.Site(root)
+    site.noisy = False
     site.displayTracebacks = False
 
     endpoint = serverFromString(reactor, http_config.endpoint)
