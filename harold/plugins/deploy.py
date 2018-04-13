@@ -227,7 +227,15 @@ class Salon(object):
         if self.queue:
             new_conch = self.queue[0]
             if new_conch != self.current_conch:
-                irc.send_message(self.channel, "@%s: you have the %s" % (new_conch, self.conch_emoji))
+                is_work_hours = current_time_status() in ("work_time", "cleanup_time")
+
+                if self.current_hold is not None:
+                    irc.send_message(self.channel, "@%s: you have the %s (but deploys are on hold)" % (new_conch, self.conch_emoji))
+                elif not is_work_hours:
+                    irc.send_message(self.channel, "@%s: you have the %s (but it's after hours)" % (new_conch, self.conch_emoji))
+                else:
+                    irc.send_message(self.channel, "@%s: you have the %s" % (new_conch, self.conch_emoji))
+
                 if len(self.queue) > 1:
                     irc.send_message(self.channel, "@%s: you're up next. please get ready!" % self.queue[1])
         else:
