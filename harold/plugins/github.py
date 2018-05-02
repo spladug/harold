@@ -31,6 +31,9 @@ def _parse_timestamp(ts):
 
 _MENTION_RE = re.compile(r"@([A-Za-z0-9][A-Za-z0-9-]*)")
 def _extract_reviewers(body):
+    if not body:
+        return []
+
     body = Salon.rewrite_emoji(body)
     reviewers = set()
     for line in body.splitlines():
