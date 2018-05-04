@@ -425,7 +425,7 @@ class SlackPlugin(Plugin):
 
         self_info = yield self._data_cache.get_self()
         my_id = "<@" + self_info["user_id"] + ">"
-        my_name = self_info["user"]
+        my_name = ("harold", self_info["user"])
 
         mention, command, args = (words[0], words[1].lower(), words[2:])
         if not (mention.startswith(my_name) or my_id in mention):
