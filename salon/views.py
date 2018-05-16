@@ -11,6 +11,9 @@ from salon.app import app, github
 from salon.models import db, PullRequest, ReviewState
 
 
+REQUESTED_SCOPES = ", ".join(["read:org"])
+
+
 def _or_list(items):
     if len(items) == 1:
         return items[0]
@@ -82,6 +85,11 @@ def login():
     if session.get("username"):
         return redirect("/")
 
+    # if they've been here before, just go straight to the redirect to save
+    # some effort.
+    if session.get("timestamp"):
+        return github.authorize(REQUESTED_SCOPES)
+
     return render_template(
         "login-required.html",
         organization=_or_list(app.config["GITHUB_ORGS"]),
@@ -92,7 +100,7 @@ def login():
 def post_login():
     if session.get("username"):
         return redirect("/")
-    return github.authorize("read:org")
+    return github.authorize(REQUESTED_SCOPES)
 
 
 @app.route("/logout")
@@ -140,16 +148,17 @@ def authorized(oauth_token):
 def authentication_required(fn):
     @functools.wraps(fn)
     def authenticator(*args, **kwargs):
-        github_username = session.get("username")
-
-        if not github_username:
-            return redirect("/login")
-
         timestamp = session.get("timestamp") or 0
         session_age = time.time() - timestamp
         if session_age >= app.config["MAX_SESSION_AGE"].total_seconds():
-            del session["username"]
-            del session["timestamp"]
+            try:
+                del session["username"]
+            except KeyError:
+                pass
+            return redirect("/login")
+
+        github_username = session.get("username")
+        if not github_username:
             return redirect("/login")
 
         return fn(github_username.lower(), *args, **kwargs)
