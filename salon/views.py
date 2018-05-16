@@ -91,7 +91,7 @@ def login():
 @app.route("/login", methods=["POST"])
 def post_login():
     if session.get("username"):
-        return "already logged in", 403
+        return redirect("/")
     return github.authorize("read:org")
 
 
