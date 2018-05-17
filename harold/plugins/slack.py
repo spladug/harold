@@ -428,7 +428,7 @@ class SlackPlugin(Plugin):
         my_name = ("harold", self_info["user"])
 
         mention, command, args = (words[0], words[1].lower(), words[2:])
-        if not (mention.startswith(my_name) or my_id in mention):
+        if not (mention.lower().startswith(my_name) or my_id in mention):
             returnValue(None)
 
         channel_id = payload["channel"]
