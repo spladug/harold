@@ -747,7 +747,8 @@ class DeployMonitor(object):
         if not who:
             return
 
-        irc.send_message(salon.channel, "forgetting deploy %s" % deploy_id)
+        irc.send_message(
+            salon.channel, "%s doesn't look like anything to me" % deploy_id)
         salon.update_topic(irc)
 
 
