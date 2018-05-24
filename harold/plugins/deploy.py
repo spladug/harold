@@ -751,6 +751,16 @@ class DeployMonitor(object):
             salon.channel, "%s doesn't look like anything to me" % deploy_id)
         salon.update_topic(irc)
 
+    @inlineCallbacks
+    def announce(self, irc, sender, channel, *message):
+        message = " ".join(message)
+        salons = yield self.salons.all()
+
+        for salon in salons:
+            irc.send_message(salon.channel, "ANNOUNCEMENT FROM @%s: %s" % (
+                sender, message))
+
+
 
 def make_plugin(config, http, irc, salons):
     deploy_config = DeployConfig(config)
@@ -786,3 +796,4 @@ def make_plugin(config, http, irc, salons):
     irc.register_command(monitor.refresh)
     irc.register_command(monitor.refresh_all)
     irc.register_command(monitor.forget)
+    irc.register_command(monitor.announce)
