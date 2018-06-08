@@ -12,6 +12,7 @@ cryptography==2.2.2
 enum34==1.1.6
 Flask==0.10.1
 Flask-SQLAlchemy==1.0
+gunicorn==19.8.1
 html5lib==0.999
 hyperlink==18.0.0
 idna==2.6
