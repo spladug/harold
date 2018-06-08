@@ -7,5 +7,5 @@
 {%- endmacro %}
 
 {% macro timestamp(ts) -%}
-<time datetime="{{ ts.isoformat() }}" title="{{ ts.strftime("%a %d %b %Y") }}" >{{ ts.strftime("%Y-%m-%d") }}</time>
+<time datetime="{{ ts.isoformat() }}Z" title="{{ ts.strftime("%a %d %b %Y") }}" >{{ ts.strftime("%Y-%m-%d") }}</time>
 {%- endmacro %}
