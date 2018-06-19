@@ -517,10 +517,12 @@ class DeployMonitor(object):
             return
 
         if salon.queue:
+            conch_holder = salon.queue[0]
+
             if len(salon.queue) > 1:
-                irc.send_message(channel, "@%s: ok -- you're in the queue" % sender)
+                irc.send_message(channel, "@%s: ok -- you're in the queue. (@%s still has the %s)" % (sender, conch_holder, salon.conch_emoji))
             else:
-                irc.send_message(channel, "@%s: ok -- you're in the queue and you're next so please be ready!" % sender)
+                irc.send_message(channel, "@%s: ok -- you're in the queue and you're next so please be ready! (@%s still has the %s)" % (sender, conch_holder, salon.conch_emoji))
 
         salon.queue.append(sender)
         salon.update_topic(irc)
