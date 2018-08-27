@@ -9,14 +9,11 @@
   <body>
     <h1>harold's code salon</h1>
 
-    {% if github_username: %}
     <p class="username">
-      welcome, <a href="https://github.com/{{ github_username }}">@{{ github_username }}</a>, to the salon.
-      <a href="/logout" target="_top">log out</a>?
+      welcome, @{{ g.username }}, to the salon.
 
       <a href="https://github.com/reddit/reddit/wiki/The-Code-Salon">what do all these emoji mean?</a>
     </p>
-    {% endif %}
 
     {% block content %}{% endblock %}
   </body>

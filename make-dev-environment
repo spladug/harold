@@ -12,6 +12,7 @@ sudo apt-get install -y \
     python-dev \
     python-pip \
     python-virtualenv \
+    nginx \
     ;
 
 mkdir -p ~/venv
@@ -79,3 +80,24 @@ BOT
 
 sudo start harold-salon
 sudo start harold-bot
+
+cat <<NGINX | sudo tee /etc/nginx/sites-available/harold
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Authenticated-User example@reddit.com;
+    }
+
+    location /harold/ {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+    }
+}
+NGINX
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo ln -s /etc/nginx/sites-available/harold /etc/nginx/sites-enabled/harold
+
+sudo service nginx reload
