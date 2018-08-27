@@ -7,7 +7,7 @@ if [ $EUID = 0 ]; then
     exit 1
 fi
 
-sudo apt-get install \
+sudo apt-get install -y \
     libcurl4-openssl-dev \
     python-dev \
     python-pip \
@@ -22,7 +22,9 @@ virtualenv harold
     source ~/venv/harold/bin/activate
     pip install --upgrade pip setuptools
     pip install -r ~/src/harold/requirements.txt
-    python ~/src/harold/setup.py develop
+
+    cd ~/src/harold
+    python setup.py develop
 )
 
 cat <<SALON | sudo tee /etc/init/harold-salon.conf
@@ -33,6 +35,11 @@ stop on runlevel [016]
 
 respawn
 
+setuid ${USER}
+setgid ${USER}
+
+chdir ${HOME}/src/harold
+
 script
     . ${HOME}/venv/harold/bin/activate
 
@@ -40,9 +47,8 @@ script
     export SALON_CONFIG=${HOME}/src/harold/example-salon.conf
 
     exec gunicorn \\
-        --bind=0.0.0.0:80 \\
+        --bind=0.0.0.0:8000 \\
         --workers=1 \\
-        --user=${USER} --group=${USER} \\
         salon.app:app
 end script
 SALON
@@ -55,17 +61,21 @@ stop on runlevel [016]
 
 respawn
 
+setuid ${USER}
+setgid ${USER}
+
+chdir ${HOME}/src/harold
+
 script
     . ${HOME}/venv/harold/bin/activate
 
     export HAROLD_CONFIGURATION=${HOME}/src/harold/example.ini
 
     exec twistd \\
-        --uid=${USER} --gid=${USER} \\
         --nodaemon --pidfile="" --no_save \\
         --python ${HOME}/src/harold/harold.tac
 end script
 BOT
 
-start harold-salon
-start harold-bot
+sudo start harold-salon
+sudo start harold-bot
