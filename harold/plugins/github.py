@@ -66,12 +66,11 @@ class PushDispatcher(object):
         for commit in commits:
             nick = yield self.salons.get_nick_for_user(_get_commit_author(commit))
             authors[nick] += 1
+
         before = info['before']
         after = info['after']
         commit_range = before[:7] + '..' + after[:7]
-        url = "https://github.com/%s/compare/%s...%s" % (repository.name,
-                                                         before,
-                                                         after)
+        url = info['compare']
 
         short_url = yield self.shortener.make_short_url(url)
         self.bot.send_message(repository.channel,

@@ -12,7 +12,7 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.created) }}
           &middot;
-          <a href="https://github.com/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+          <a href="https://{{ config.GITHUB_HOSTNAME }}/{{ pull_request.author }}">@{{ pull_request.author }}</a>
           &middot;
           <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
         </p>
