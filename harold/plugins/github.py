@@ -15,16 +15,6 @@ from harold.utils import dehilight
 _BUNDLE_THRESHOLD = 3
 
 
-# https://github.com/reddit/reddit/pull/33#issuecomment-767815
-_PULL_REQUEST_URL_RE = re.compile(r"""
-https://github.com/
-(?P<repository>[^/]+/[^/]+)
-/pull/
-(?P<number>\d+)
-[#]issuecomment-\d+
-""", re.VERBOSE)
-
-
 def _parse_timestamp(ts):
     return datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
 
