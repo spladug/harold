@@ -248,7 +248,7 @@ class SlackBot(object):
             yield self._api_client.make_request(
                 "channels.setTopic",
                 channel=channel["id"],
-                topic=topic,
+                topic=topic[:250],
             )
         except SlackWebClientError as exc:
             print("Failed while setting topic in %s: %s" % (channel_name, exc))
