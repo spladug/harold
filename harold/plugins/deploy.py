@@ -236,7 +236,8 @@ class Salon(object):
                 else:
                     irc.send_message(self.channel, "@%s: you have the %s" % (new_conch, self.conch_emoji))
 
-                irc.send_message(self.channel, "@%s: you're up next. please get ready!" % self.queue[1])
+                if len(self.queue) > 1:
+                    irc.send_message(self.channel, "@%s: you're up next. please get ready!" % self.queue[1])
         else:
             new_conch = None
         self.current_conch = new_conch
