@@ -386,12 +386,14 @@ class Salon(object):
                 nick = yield self.salons.get_nick_for_user(reviewer_username)
                 reviewers.append(nick)
             if repository and reviewers:
-                self.bot.send_message(repository.channel,
-                                      "%(reviewers)s: %(user)s has requested "
-                                      "your review of ^" % {
-                                          "reviewers": " & ".join(reviewers),
-                                          "user": dehilight(sender),
-                                      })
+                message = self.messages_by_emoji[":eyeglasses:"]
+                self.bot.send_message(repository.channel, message % {
+                    "reviewers": " & ".join(reviewers),
+                    "user": dehilight(sender),
+                    "repo": repository_name,
+                    "id": pull_request_id,
+                    "short_url": short_url,
+                })
 
     @classmethod
     def rewrite_emoji(cls, text):
