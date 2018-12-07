@@ -306,6 +306,15 @@ class SalonManager(object):
         returnValue(salon)
 
     @inlineCallbacks
+    def by_repository(self, name):
+        repo = yield self.salon_config_db.get_repository(name)
+        if not repo:
+            returnValue(None)
+
+        salon = yield self.by_channel(repo.channel)
+        returnValue(salon)
+
+    @inlineCallbacks
     def create(self, channel_name, emoji):
         config = yield self.salon_config_db.create_salon(
             channel_name.lstrip("#"),
@@ -375,6 +384,32 @@ class DeployMonitor(object):
 
     @inlineCallbacks
     def repository(self, irc, sender, channel, subcommand, *args):
+        def validate_repo_name(repo_name):
+            org, sep, repo = repo_name.partition("/")
+            if sep != "/":
+                irc.send_message(channel, "You must specify a full repository "
+                                 "name with organization (like "
+                                 "reddit/error-pages).")
+                returnValue(None)
+            elif org not in self.config.organizations:
+                irc.send_message(channel, "I can only watch repositories in "
+                                 "one of the following organizations: " +
+                                 ", ".join(self.config.organizations))
+                returnValue(None)
+
+        if subcommand == "where":
+            repo_name = args[0]
+
+            validate_repo_name(repo_name)
+            salon = yield self.salons.by_repository(repo_name)
+
+            if salon:
+                irc.send_message(channel, "%s is managed in %s" % (repo_name, salon.channel))
+            else:
+                irc.send_message(channel, "%s is not managed in any salon" % (repo_name,))
+
+            returnValue(None)
+
         salon = yield self.salons.by_channel(channel)
         if not salon:
             return
@@ -383,7 +418,7 @@ class DeployMonitor(object):
         all_repo_names = [r.name for r in all_repos]
 
         if subcommand == "list":
-            if all_repos:
+            if all_repo_names:
                 chunks = ["This salon manages: "]
 
                 # determined empirically for slack :(
@@ -403,18 +438,7 @@ class DeployMonitor(object):
                 irc.send_message(channel, "This salon manages no repositories")
         elif subcommand == "add":
             repo_name = args[0]
-
-            org, sep, repo = repo_name.partition("/")
-            if sep != "/":
-                irc.send_message(channel, "You must specify a full repository "
-                                 "name with organization (like "
-                                 "reddit/error-pages).")
-                return
-            elif org not in self.config.organizations:
-                irc.send_message(channel, "I can only watch repositories in "
-                                 "one of the following organizations: " +
-                                 ", ".join(self.config.organizations))
-                return
+            validate_repo_name(repo_name)
 
             if repo_name not in all_repo_names:
                 salon.add_repo(repo_name)
