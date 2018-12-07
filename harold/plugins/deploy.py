@@ -457,7 +457,12 @@ class DeployMonitor(object):
         else:
             irc.send_message(channel, "Unknown repository command.")
 
+    @inlineCallbacks
     def help(self, irc, sender, channel, *args):
+        salon = yield self.salons.by_channel(channel)
+        if not salon:
+            return
+
         irc.send_message(channel, "see: https://github.com/spladug/harold/wiki")
 
     @inlineCallbacks

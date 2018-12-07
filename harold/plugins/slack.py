@@ -268,7 +268,7 @@ class SlackBot(object):
         message = self.USER_RE.sub(replace_user_mention, message)
 
         channels = yield self._data_cache.get_channels()
-        channels_by_name = {"#" + c["name"]: c for c in channels.itervalues() if "name" in c}
+        channels_by_name = {"#" + c["name"]: c for c in channels.itervalues()}
         def replace_channel_mention(m):
             mentioned_channel = m.group(1)
             try:
@@ -280,10 +280,7 @@ class SlackBot(object):
         message = self.CHANNEL_RE.sub(replace_channel_mention, message)
 
         try:
-            if channel_name.startswith("#"):
-                channel = channels_by_name[channel_name]
-            else:
-                channel = channels[channel_name]
+            channel = channels_by_name[channel_name]
         except KeyError:
             print("Attempted to send message to unknown channel: %s" % channel_name)
 
@@ -319,11 +316,7 @@ class SlackDataCache(object):
             self._users[user["id"]] = user
 
         channels = yield self._api_client.make_paginated_request(
-            "conversations.list",
-            "channels",
-            exclude_archived=True,
-            types="public_channel,private_channel,mpim,im",
-        )
+            "channels.list", "channels", exclude_members=True)
         for channel in channels:
             self._channels[channel["id"]] = channel
 
@@ -427,36 +420,23 @@ class SlackPlugin(Plugin):
         except KeyError:
             returnValue(None)
 
-        user = yield self._data_cache.get_user_by_id(payload["user"])
-        sender_nick = user["name"]
-
-        channel_id = payload["channel"]
-        channel_info = yield self._data_cache.get_channel_by_id(channel_id)
+        if len(words) < 2:
+            returnValue(None)
 
         self_info = yield self._data_cache.get_self()
         my_id = "<@" + self_info["user_id"] + ">"
         my_name = ("harold", self_info["user"])
 
-        if not channel_info.get("is_im", False):
-            channel = '#' + channel_info["name"]
+        mention, command, args = (words[0], words[1].lower(), words[2:])
+        if not (mention.lower().startswith(my_name) or my_id in mention):
+            returnValue(None)
 
-            if len(words) < 2:
-                returnValue(None)
+        channel_id = payload["channel"]
+        channel_info = yield self._data_cache.get_channel_by_id(channel_id)
+        channel = '#' + channel_info["name"]
 
-            mention, command, args = (words[0], words[1].lower(), words[2:])
-            if not (mention.lower().startswith(my_name) or my_id in mention):
-                returnValue(None)
-        else:
-            channel = channel_id
-
-            if len(words) < 1:
-                returnValue(None)
-
-            if words[0].lower().startswith(my_name) or my_id in words[0]:
-                words = words[1:]
-
-            command = words[0]
-            args = words[1:]
+        user = yield self._data_cache.get_user_by_id(payload["user"])
+        sender_nick = user["name"]
 
         try:
             self._handlers.process(command, self.bot, sender_nick, channel, *args)
