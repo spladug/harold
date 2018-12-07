@@ -17,3 +17,6 @@ logging.basicConfig(level=logging.INFO)
 
 # register views
 import salon.views
+
+# register cli command for email sending
+import salon.email

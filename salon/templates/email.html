@@ -1,0 +1,87 @@
+<html>
+<head>
+<style>
+body {
+  font-size: 13px;
+  line-height: 19.5px;
+  font-family: Arial;
+}
+
+h1 {
+  font-size: 110%;
+}
+
+h2 {
+  font-size: 100%;
+}
+
+</style>
+</head>
+<body>
+
+{% import "utils.html" as utils %}
+<p>Hello @{{ username }},</p>
+
+<p>Here is your daily update on pull requests that need your attention. <a href="https://harold.snooguts.net">See all pull requests in your full dashboard.</a></p>
+
+{% if to_review: %}
+<h1>Review Requests</h1>
+<p>You have {{ to_review | length | maybe_plural("pull request") }} awaiting
+your review. Please <em>remember the human</em> and review pull requests
+promptly. If you're unable to review a pull request in a timely fashion, <a
+href="https://github.com/spladug/harold/wiki/Removing-yourself-from-review">remove
+yourself from review</a> to unblock the author.</p>
+
+{% for bucket_name, reviews in to_review | bucket_by_age %}
+{% if reviews: %}
+{% if bucket_name != "recent": %}
+<h2>Waiting for more than a {{ bucket_name }}</h2>
+{% else: %}
+<h2>Recently updated</h2>
+{% endif %}
+<ul>
+{% for review in reviews %}
+  <li>
+    <a class="pr" href="{{ review.pull_request.url }}">{{ review.pull_request.repository }}#{{ review.pull_request.id }}</a>
+    by @{{ review.pull_request.author }} &mdash;
+    {{ utils.truncated_title(review.pull_request.title, "") }}
+  </li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+
+{% if my_pulls: %}
+<h1>Your Pull Requests</h1>
+
+<p>You have {{ my_pulls | length | maybe_plural("pull request") }} open that
+require your attention. Please make sure to close out merged or obsolete pull
+requests.</p>
+
+{% for bucket_name, pulls in my_pulls | bucket_by_age %}
+{% if pulls: %}
+{% if bucket_name != "recent": %}
+<h2>Created more than a {{ bucket_name }} ago</h2>
+{% else: %}
+<h2>Recently created</h2>
+{% endif %}
+<ul>
+{% for pull_request in pulls %}
+  <li>
+    <a class="pr" href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a> &mdash;
+    {{ utils.truncated_title(pull_request.title, "") }}
+  </li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+<p>
+Happy Hacking,<br>
+&mdash; Harold
+</p>
+</body>
+</html>

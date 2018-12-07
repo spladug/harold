@@ -1,9 +1,14 @@
+import collections
+
 from flask_sqlalchemy import SQLAlchemy
 
 from salon.app import app
 
 
 db = SQLAlchemy(app)
+
+
+CalculatedReviewState = collections.namedtuple("CalculatedReviewState", "pull_request state timestamp")
 
 
 class PullRequest(db.Model):
@@ -19,22 +24,71 @@ class PullRequest(db.Model):
     states = db.relationship(
         lambda: ReviewState,
         order_by=lambda: ReviewState.timestamp.desc(),
+        backref="pull_request",
     )
 
     def current_states(self):
-        haircut_seen = False
-        states_by_user = {}
+        haircut_time = None
+        states_by_user = collections.OrderedDict()
         for state in self.states:
             if state.state == "haircut":
-                haircut_seen = True
+                haircut_time = state.timestamp
                 continue
 
-            if haircut_seen and state.state not in ("unreviewed", "running"):
+            if haircut_time and state.state not in ("unreviewed", "running"):
                 new_state = "haircut"
+                timestamp = haircut_time
             else:
                 new_state = state.state
-            states_by_user[state.user.lower()] = new_state
+                timestamp = state.timestamp
+
+            states_by_user[state.user.lower()] = CalculatedReviewState(self, new_state, timestamp)
         return states_by_user
+
+    def state_for_user(self, username):
+        states = self.current_states()
+        return states[username.lower()]
+
+    def review_stage(self):
+        states_by_reviewer = self.current_states()
+
+        if not states_by_reviewer:
+            return "eyeglasses"
+
+        # now, take away the "nope" people and see what's up
+        states = states_by_reviewer.values()
+        states = [state.state for state in states
+                  if state.state not in ("unreviewed", "running")]
+
+        if not states:
+            return "unreviewed"
+        elif all(state == "fish" for state in states):
+            return "fish"
+        elif any(state == "nail_care" for state in states):
+            return "nail_care"
+
+        return "haircut"
+
+    @classmethod
+    def by_requested_reviewer(cls, username):
+        return (cls.query
+            .options(db.subqueryload(PullRequest.states))
+            .filter(PullRequest.state == "open")
+            .filter(db.func.lower(PullRequest.author) != username)
+            .join(ReviewState)
+            .filter(db.func.lower(ReviewState.user) == username)
+            .order_by(db.asc(ReviewState.timestamp))
+        )
+
+    @classmethod
+    def by_author(cls, username):
+        return (
+            PullRequest.query
+                .options(db.subqueryload(PullRequest.states))
+                .filter(PullRequest.state == "open")
+                .filter(db.func.lower(PullRequest.author) == username)
+                .order_by(db.asc(PullRequest.created))
+        )
 
 
 class ReviewState(db.Model):
@@ -75,6 +129,17 @@ class User(db.Model):
 
     irc_nick = db.Column(db.String, primary_key=True)
     github_username = db.Column(db.String, nullable=False)
+
+
+class EmailAddress(db.Model):
+    __tablename__ = "emails"
+
+    email_address = db.Column(db.String, primary_key=True)
+    opted_into_nags = db.Column(db.Boolean, default=True)
+
+    @property
+    def github_username(self):
+        return self.email_address.partition("@")[0].lower().replace(".", "-")
 
 
 db.create_all()

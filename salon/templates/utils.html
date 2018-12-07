@@ -1,11 +1,17 @@
 {% macro truncated_title(title, url) -%}
+  {% if url: %}
+  <a href="{{ url }}" title="{{ title }}">
+  {% endif %}
   {% if title|length > 70: %}
-  <a href="{{ url }}" title="{{ title }}">{{ title[:70] }}&hellip;</a>
+  {{ title[:70] }}&hellip;
   {% else %}
-  <a href="{{ url }}">{{ title }}</a>
+  {{ title }}
+  {% endif %}
+  {% if url: %}
+  </a>
   {% endif %}
 {%- endmacro %}
 
 {% macro timestamp(ts) -%}
-<time datetime="{{ ts.isoformat() }}Z" title="{{ ts.strftime("%a %d %b %Y") }}" >{{ ts.strftime("%Y-%m-%d") }}</time>
+<time datetime="{{ ts.isoformat() }}Z" title="{{ ts.strftime("%a %d %b %Y") }}" >{{ ts.strftime("%Y-%m-%d %H:%M") }}</time>
 {%- endmacro %}

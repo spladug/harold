@@ -10,7 +10,7 @@
       <div class="pull-request">
         <h4>{{ utils.truncated_title(pull_request.title, pull_request.url) }}</h4>
         <p class="tagline">
-          {{ utils.timestamp(pull_request.created) }}
+          {{ utils.timestamp(pull_request.state_for_user(username).timestamp) }}
           &middot;
           <a href="https://{{ config.GITHUB_HOSTNAME }}/{{ pull_request.author }}">@{{ pull_request.author }}</a>
           &middot;
@@ -31,8 +31,8 @@
       <div class="pull-request">
         <ul class="review-states">
           {% for user, state in pull_request.current_states().iteritems(): %}
-            {% if user != github_username or state != "unreviewed": %}
-            <li title="@{{ user }}: {{ state_meanings[state] }}" class="state state-{{ state }}">:{{ state }}:</li>
+            {% if user != pull_request.author or state.state != "unreviewed": %}
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}">:{{ state.state }}:</li>
             {% endif %}
           {% endfor %}
         </ul>
