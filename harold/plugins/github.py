@@ -332,6 +332,10 @@ class Salon(object):
             if "requested_reviewer" not in parsed:
                 return
 
+            # the review state change should be timestampped based on this
+            # action not based on when the PR was first created
+            timestamp = datetime.datetime.utcnow()
+
             username = parsed["requested_reviewer"]["login"]
             is_new_request = yield self.database.add_review_request(
                 repo=repository_name,
