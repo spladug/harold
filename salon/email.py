@@ -13,7 +13,6 @@ AgeBucket = collections.namedtuple("AgeBucket", "threshold name")
 
 AGE_BUCKETS = (
     AgeBucket(datetime.timedelta(days=365), "year"),
-    AgeBucket(datetime.timedelta(days=90), "quarter"),
     AgeBucket(datetime.timedelta(days=30), "month"),
     AgeBucket(datetime.timedelta(weeks=1), "week"),
     AgeBucket(datetime.timedelta(hours=24), "day"),
