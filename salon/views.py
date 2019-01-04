@@ -3,7 +3,7 @@ import collections
 from flask import render_template, request, g
 
 from salon.app import app
-from salon.models import db, PullRequest, ReviewState, EmailAddress
+from salon.models import db, PullRequest, EmailAddress
 
 
 @app.before_request
