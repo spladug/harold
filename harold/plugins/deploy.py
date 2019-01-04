@@ -783,7 +783,7 @@ class DeployMonitor(object):
         salons = yield self.salons.all()
 
         for salon in salons:
-            irc.send_message(salon.channel, ":exclamation: :speech_bubble: ANNOUNCEMENT FROM @%s: %s" % (
+            irc.send_message(salon.channel, ":siren: ANNOUNCEMENT FROM @%s: %s" % (
                 sender, message))
 
 
