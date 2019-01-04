@@ -39,7 +39,7 @@ pycurl==7.19.3
 pyinotify==0.9.4
 pyOpenSSL==17.5.0
 pyserial==2.6
-PyYAML==3.10
+PyYAML==4.2b2
 requests==2.20.1
 service-identity==17.0.0
 six==1.11.0
