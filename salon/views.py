@@ -13,10 +13,8 @@ def get_username():
     email_address = EmailAddress.query.get(okta_id)
     if not email_address:
         email_address = EmailAddress(email_address=okta_id)
-
-        # Temporarily disabled while doing opt-in only nags.
-        # db.session.add(email_address)
-        # db.session.commit()
+        db.session.add(email_address)
+        db.session.commit()
 
     g.username = email_address.github_username
 
