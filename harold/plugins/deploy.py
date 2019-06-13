@@ -5,6 +5,7 @@ import hmac
 import json
 import re
 import time
+import pytz
 
 from twisted.web import resource, server
 from twisted.internet import reactor, task
@@ -16,7 +17,10 @@ from harold.plugins.salons import WouldOrphanRepositoriesError
 from harold.utils import (
     constant_time_compare,
     dehilight,
+    fmt_time,
+    parse_time,
     pretty_and_accurate_time_span,
+    utc_offset,
 )
 
 
@@ -29,6 +33,9 @@ DEPLOY_TTL = 3600
 
 class DeployConfig(PluginConfig):
     organizations = Option(tup)
+    default_hours_start = Option(str)
+    default_hours_end = Option(str)
+    default_tz = Option(str)
 
 
 class DeployListener(ProtectedResource):
@@ -75,7 +82,7 @@ class DeployStatusListener(resource.Resource):
         def send_response(salon):
             request.setHeader("Content-Type", "application/json")
             request.write(json.dumps({
-                "time_status": current_time_status(),
+                "time_status": salon.current_time_status(),
                 "busy": bool(salon.deploys),
                 "hold": salon.current_hold,
             }))
@@ -150,27 +157,6 @@ class OngoingDeploy(object):
     pass
 
 
-def current_time_status():
-    date = datetime.date.today()
-    time = datetime.datetime.now().time()
-
-    # always after 9am
-    if time < datetime.time(9, 0):
-        return "after_hours"
-
-    if date.weekday() in (0, 1, 2, 3):
-        # monday through thursday, before 4pm
-        if time < datetime.time(16, 0):
-            return "work_time"
-        elif time < datetime.time(17, 0):
-            return "cleanup_time"
-        else:
-            return "after_hours"
-    else:
-        # no work on the weekend
-        return "after_hours"
-
-
 class Salon(object):
     def __init__(self, db, config):
         self.db = db
@@ -178,6 +164,9 @@ class Salon(object):
         self.channel = config.channel
         self.allow_deploys = config.allow_deploys
         self.conch_emoji = config.conch_emoji.encode("utf-8")
+        self.deploy_hours_start = config.deploy_hours_start
+        self.deploy_hours_end = config.deploy_hours_end
+        self.tz = config.tz
         self.deploys = {}
         self.current_hold = None
         self.current_conch = ""
@@ -190,7 +179,8 @@ class Salon(object):
         if self.current_hold is not None:
             status = ":no_entry_sign: deploys ON HOLD (%s)" % self.current_hold
         else:
-            time_status = current_time_status()
+            time_status = self.current_time_status()
+            print time_status
 
             if time_status == "work_time":
                 status = ":office: working hours, normal deploy rules apply"
@@ -227,7 +217,7 @@ class Salon(object):
         if self.queue:
             new_conch = self.queue[0]
             if new_conch != self.current_conch:
-                is_work_hours = current_time_status() in ("work_time", "cleanup_time")
+                is_work_hours = self.current_time_status() in ("work_time", "cleanup_time")
 
                 if self.current_hold is not None:
                     irc.send_message(self.channel, "@%s: you have the %s (but deploys are on hold)" % (new_conch, self.conch_emoji))
@@ -278,6 +268,38 @@ class Salon(object):
     def remove_repo(self, repo_name):
         yield self.db.remove_repository(self.name, repo_name)
 
+    @inlineCallbacks
+    def set_deploy_hours(self, irc, start, end, tz):
+        yield self.db.set_deploy_hours(self.name, start, end, tz)
+        self.deploy_hours_start = start
+        self.deploy_hours_end = end
+        self.tz = tz
+        self.update_topic(irc)
+
+    def current_time_status(self):
+        date = datetime.date.today()
+        time = datetime.datetime.now(tz=self.tz).time()
+
+        start = self.deploy_hours_start
+        end = self.deploy_hours_end
+        end_datetime = datetime.datetime.combine(date, self.deploy_hours_end)
+        cleanup = (end_datetime - datetime.timedelta(hours=1)).time()
+
+        if time < start:
+            return "after_hours"
+
+        if date.weekday() in (0, 1, 2, 3):
+            # monday through thursday, 1 hour before end
+            if time < cleanup:
+                return "work_time"
+            elif time < end:
+                return "cleanup_time"
+            else:
+                return "after_hours"
+        else:
+            # no work on the weekend
+            return "after_hours"
+
 
 class SalonManager(object):
     def __init__(self, salon_config_db):
@@ -315,10 +337,13 @@ class SalonManager(object):
         returnValue(salon)
 
     @inlineCallbacks
-    def create(self, channel_name, emoji):
+    def create(self, channel_name, emoji, deploy_hours_start, deploy_hours_end, tz):
         config = yield self.salon_config_db.create_salon(
             channel_name.lstrip("#"),
             emoji,
+            deploy_hours_start,
+            deploy_hours_end,
+            tz,
         )
         new_salon = Salon(self.salon_config_db, config)
         self.salons[channel_name] = new_salon
@@ -365,7 +390,10 @@ class DeployMonitor(object):
             irc.send_message(channel, "That doesn't look like a valid emoji.")
             return
 
-        new_salon = yield self.salons.create(channel, emoji)
+        deploy_hours_start = parse_time(self.config.default_hours_start)
+        deploy_hours_end = parse_time(self.config.default_hours_end)
+        tz = pytz.timezone(self.config.default_tz)
+        new_salon = yield self.salons.create(channel, emoji, deploy_hours_start, deploy_hours_end, tz)
         new_salon.update_topic(irc, force=True)
 
     @inlineCallbacks
@@ -381,6 +409,59 @@ class DeployMonitor(object):
             irc.send_message(channel, "Desalonifying this room would orphan "
                              "repositories. Please use the 'repository' "
                              "command to rehome them first.")
+
+    @inlineCallbacks
+    def set_deploy_hours(self, irc, sender, channel, *args):
+        def usage():
+            irc.send_message(channel, "*USAGE:* set_deploy_hours 0900 1700 America/Los_Angeles")
+            irc.send_message(channel, "List of timezone names: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List")
+
+        if not args or len(args) != 3:
+            usage()
+        start, end, tz_name = args
+
+        salon = yield self.salons.by_channel(channel)
+        if not salon:
+            irc.send_message(channel, "This channel isn't a salon.")
+            return
+
+        try:
+            tz = pytz.timezone(tz_name)
+        except pytz.UnknownTimeZoneError:
+            irc.send_message(channel, "*Error:* Unknown timezone {}".format(tz_name))
+            usage()
+            return
+
+        try:
+            start_time = parse_time(start)
+            end_time = parse_time(end)
+            if start_time > end_time:
+                raise ValueError
+        except ValueError:
+            irc.send_message(channel, "*Error:* Invalid time range {} {}".format(start, end))
+            usage()
+            return
+
+        yield salon.set_deploy_hours(irc, start_time, end_time, tz)
+        irc.send_message(salon.channel,
+                         """deploy hours set to %s-%s, %s (%s)""" %
+                         (start, end, tz_name, utc_offset(salon.tz)))
+
+
+    @inlineCallbacks
+    def get_deploy_hours(self, irc, sender, channel):
+        "Get the deploy hours for this salon."
+        salon = yield self.salons.by_channel(channel)
+        if not salon:
+            irc.send_message(channel, "This channel isn't a salon.")
+            return
+
+        start = fmt_time(salon.deploy_hours_start)
+        end = fmt_time(salon.deploy_hours_end)
+        tz = salon.tz
+        irc.send_message(salon.channel,
+                                  """deploy hours are %s-%s, %s (%s)""" %
+                                  (start, end, tz, utc_offset(tz)))
 
     @inlineCallbacks
     def repository(self, irc, sender, channel, subcommand, *args):
@@ -823,3 +904,5 @@ def make_plugin(config, http, irc, salons):
     irc.register_command(monitor.refresh_all)
     irc.register_command(monitor.forget)
     irc.register_command(monitor.announce)
+    irc.register_command(monitor.set_deploy_hours)
+    irc.register_command(monitor.get_deploy_hours)

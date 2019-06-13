@@ -1,3 +1,6 @@
+import datetime
+
+
 def pretty_time_span(delta):
     seconds = int(delta.total_seconds())
     minutes, seconds = divmod(seconds, 60)
@@ -65,3 +68,19 @@ def constant_time_compare(actual, expected):
         for i in xrange(actual_len):
             result |= ord(actual[i]) ^ ord(expected[i % expected_len])
     return result == 0
+
+
+def fmt_time(time):
+    return time.strftime("%H%M")
+
+
+def parse_time(time_str):
+    return datetime.datetime.strptime(time_str, "%H%M").time()
+
+
+def utc_offset(tz):
+    """
+    Takes a timezone and returns UTC offset (e.g. -0700) of that timezone,
+    for the current time.
+    """
+    return datetime.datetime.now(tz=tz).strftime("%z")
