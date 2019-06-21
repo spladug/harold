@@ -280,19 +280,17 @@ class Salon(object):
         date = datetime.date.today(tz=self.tz)
         time = datetime.datetime.now(tz=self.tz).time()
 
-        start = self.deploy_hours_start
-        end = self.deploy_hours_end
         end_datetime = datetime.datetime.combine(date, self.deploy_hours_end)
         cleanup = (end_datetime - datetime.timedelta(hours=1)).time()
 
-        if time < start:
+        if time < self.deploy_hours_start:
             return "after_hours"
 
         if date.weekday() in (0, 1, 2, 3):
             # monday through thursday, 1 hour before end
             if time < cleanup:
                 return "work_time"
-            elif time < end:
+            elif time < self.deploy_hours_end:
                 return "cleanup_time"
             else:
                 return "after_hours"
