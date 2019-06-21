@@ -36,6 +36,8 @@ class DeployConfig(PluginConfig):
     default_hours_start = Option(parse_time)
     default_hours_end = Option(parse_time)
     default_tz = Option(pytz.timezone)
+    blackout_hours_start = Option(parse_time)
+    blackout_hours_end = Option(parse_time)
 
 
 class DeployListener(ProtectedResource):
@@ -441,6 +443,24 @@ class DeployMonitor(object):
         except ValueError:
             irc.send_message(channel, "*Error:* Invalid time range {} {}".format(start, end))
             usage()
+            return
+
+        date = datetime.datetime.now(tz=tz).date()
+        start_datetime = tz.localize(datetime.datetime.combine(date, start_time))
+        end_datetime = tz.localize(datetime.datetime.combine(date, end_time))
+
+        blackout_date = datetime.datetime.now(tz=self.config.default_tz).date()
+        blackout_start = self.config.default_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_start))
+        blackout_end = self.config.default_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_end))
+
+        max_start = max(start_datetime, blackout_start)
+        min_end = min(end_datetime, blackout_end)
+
+        yesterday_max_start = max(start_datetime, blackout_start - datetime.timedelta(days=1))
+        yesterday_min_end = min(end_datetime, blackout_end - datetime.timedelta(days=1))
+
+        if max_start < min_end or yesterday_max_start < yesterday_min_end:
+            irc.send_message(channel, "blackout")
             return
 
         yield salon.set_deploy_hours(irc, start_time, end_time, tz)
