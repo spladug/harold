@@ -84,3 +84,14 @@ def utc_offset(tz):
     for the current time.
     """
     return datetime.datetime.now(tz=tz).strftime("%z")
+
+# Takes in two tuples of (datetime.time, datetime.time) representing a time
+# range, and returns true if those ranges overlap.
+def timerange_overlap(rangeA, rangeB):
+    print rangeA
+    print rangeB
+    max_start = max(rangeA[0], rangeB[0])
+    min_end = min(rangeA[1], rangeB[1])
+
+    print max_start, min_end
+    return max_start < min_end

@@ -20,6 +20,7 @@ from harold.utils import (
     fmt_time,
     parse_time,
     pretty_and_accurate_time_span,
+    timerange_overlap,
     utc_offset,
 )
 
@@ -446,22 +447,33 @@ class DeployMonitor(object):
             return
 
         date = datetime.datetime.now(tz=tz).date()
-        start_datetime = tz.localize(datetime.datetime.combine(date, start_time))
-        end_datetime = tz.localize(datetime.datetime.combine(date, end_time))
+        deploy_start = tz.localize(datetime.datetime.combine(date, start_time))
+        deploy_end = tz.localize(datetime.datetime.combine(date, end_time))
+        deploy_timerange = (deploy_start, deploy_end)
 
-        blackout_date = datetime.datetime.now(tz=self.config.default_tz).date()
-        blackout_start = self.config.default_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_start))
-        blackout_end = self.config.default_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_end))
+        blackout_tz = self.config.default_tz
+        blackout_date = datetime.datetime.now(tz=blackout_tz).date()
 
-        max_start = max(start_datetime, blackout_start)
-        min_end = min(end_datetime, blackout_end)
+        # User-defined deploy hours can only exist in a single day in their
+        # given timezone, but may cross day boundaries in the blackout
+        # timezone. This necessitates us checking for overlap for both today
+        # and yesterday.
+        # Example: Deploy hours of 0100-0200 EST, blackout hours of 2200-2300 PST.
+        for i in (0, 1):
+            delta = datetime.timedelta(days=i)
+            blackout_start = blackout_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_start))
+            blackout_end = blackout_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_end))
+            blackout_timerange = (blackout_start - delta, blackout_end - delta)
 
-        yesterday_max_start = max(start_datetime, blackout_start - datetime.timedelta(days=1))
-        yesterday_min_end = min(end_datetime, blackout_end - datetime.timedelta(days=1))
-
-        if max_start < min_end or yesterday_max_start < yesterday_min_end:
-            irc.send_message(channel, "blackout")
-            return
+            if timerange_overlap(deploy_timerange, blackout_timerange):
+                irc.send_message(channel, "ERROR: Requested deploy hours overlap with blackout window.")
+                irc.send_message(channel, "Blackout hours are {} to {}, {} ({})".format(
+                    fmt_time(blackout_start.astimezone(tz)),
+                    fmt_time(blackout_end.astimezone(tz)),
+                    tz,
+                    utc_offset(tz),
+                ))
+                return
 
         yield salon.set_deploy_hours(irc, start_time, end_time, tz)
         irc.send_message(salon.channel,
