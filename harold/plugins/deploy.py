@@ -277,7 +277,7 @@ class Salon(object):
         self.update_topic(irc)
 
     def current_time_status(self):
-        date = datetime.date.today()
+        date = datetime.date.today(tz=self.tz)
         time = datetime.datetime.now(tz=self.tz).time()
 
         start = self.deploy_hours_start
