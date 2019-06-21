@@ -33,9 +33,9 @@ DEPLOY_TTL = 3600
 
 class DeployConfig(PluginConfig):
     organizations = Option(tup)
-    default_hours_start = Option(str)
-    default_hours_end = Option(str)
-    default_tz = Option(str)
+    default_hours_start = Option(parse_time)
+    default_hours_end = Option(parse_time)
+    default_tz = Option(pytz.timezone)
 
 
 class DeployListener(ProtectedResource):
@@ -388,10 +388,13 @@ class DeployMonitor(object):
             irc.send_message(channel, "That doesn't look like a valid emoji.")
             return
 
-        deploy_hours_start = parse_time(self.config.default_hours_start)
-        deploy_hours_end = parse_time(self.config.default_hours_end)
-        tz = pytz.timezone(self.config.default_tz)
-        new_salon = yield self.salons.create(channel, emoji, deploy_hours_start, deploy_hours_end, tz)
+        new_salon = yield self.salons.create(
+            channel,
+            emoji,
+            self.config.default_hours_start,
+            self.config.default_hours_end,
+            self.config.default_tz
+        )
         new_salon.update_topic(irc, force=True)
 
     @inlineCallbacks
