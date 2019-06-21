@@ -1,11 +1,16 @@
 import collections
+import pytz
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from harold.plugin import Plugin
+from harold.utils import (
+    fmt_time,
+    parse_time,
+)
 
 
-_Salon = collections.namedtuple("Salon", "name conch_emoji allow_deploys")
+_Salon = collections.namedtuple("Salon", "name conch_emoji deploy_hours_start deploy_hours_end tz allow_deploys")
 _Repository = collections.namedtuple("Repository", "name salon branches_ format_ bundled_format_")
 
 
@@ -48,21 +53,39 @@ class SalonManagerPlugin(Plugin):
     @inlineCallbacks
     def get_salons(self):
         rows = yield self.database.runQuery(
-            "SELECT name, conch_emoji, allow_deploys FROM salons"
+            "SELECT name, conch_emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys FROM salons"
         )
 
         salons = []
         for row in rows:
-            salons.append(Salon(*row))
+            name, conch_emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys = row
+            salon = Salon(
+                name,
+                conch_emoji,
+                parse_time(deploy_hours_start),
+                parse_time(deploy_hours_end),
+                pytz.timezone(tz),
+                allow_deploys=True,
+            )
+            salons.append(salon)
         returnValue(salons)
 
     @inlineCallbacks
-    def create_salon(self, name, conch_emoji):
+    def create_salon(self, name, conch_emoji, deploy_hours_start, deploy_hours_end, tz):
         yield self.database.runOperation(
-            "INSERT INTO salons (name, conch_emoji, allow_deploys) VALUES (?, ?, ?)",
-            (name, conch_emoji, True),
+            "INSERT INTO salons (name, conch_emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys) VALUES (?, ?, ?, ?, ?, ?)",
+            (name, conch_emoji, fmt_time(deploy_hours_start),
+             fmt_time(deploy_hours_end), str(tz), True),
         )
-        returnValue(Salon(name, conch_emoji, allow_deploys=True))
+        salon = Salon(
+            name,
+            conch_emoji,
+            deploy_hours_start,
+            deploy_hours_end,
+            tz,
+            allow_deploys=True,
+        )
+        returnValue(salon)
 
     @inlineCallbacks
     def delete_salon(self, name):
@@ -156,6 +179,12 @@ class SalonManagerPlugin(Plugin):
                 (irc_nick.lower(),),
             )
 
+    @inlineCallbacks
+    def set_deploy_hours(self, name, start, end, tz):
+        yield self.database.runOperation(
+            "UPDATE salons SET deploy_hours_start = ?, deploy_hours_end = ?, tz = ? WHERE lower(name) = ?",
+            (fmt_time(start), fmt_time(end), str(tz), name),
+        )
 
 def make_plugin(database):
     return SalonManagerPlugin(database)
