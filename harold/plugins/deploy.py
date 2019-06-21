@@ -453,6 +453,8 @@ class DeployMonitor(object):
 
         blackout_tz = self.config.default_tz
         blackout_date = datetime.datetime.now(tz=blackout_tz).date()
+        blackout_start = blackout_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_start))
+        blackout_end = blackout_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_end))
 
         # User-defined deploy hours can only exist in a single day in their
         # given timezone, but may cross day boundaries in the blackout
@@ -461,8 +463,6 @@ class DeployMonitor(object):
         # Example: Deploy hours of 0100-0200 EST, blackout hours of 2200-2300 PST.
         for i in (0, 1):
             delta = datetime.timedelta(days=i)
-            blackout_start = blackout_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_start))
-            blackout_end = blackout_tz.localize(datetime.datetime.combine(blackout_date, self.config.blackout_hours_end))
             blackout_timerange = (blackout_start - delta, blackout_end - delta)
 
             if timerange_overlap(deploy_timerange, blackout_timerange):
