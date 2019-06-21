@@ -180,7 +180,6 @@ class Salon(object):
             status = ":no_entry_sign: deploys ON HOLD (%s)" % self.current_hold
         else:
             time_status = self.current_time_status()
-            print time_status
 
             if time_status == "work_time":
                 status = ":office: working hours, normal deploy rules apply"
