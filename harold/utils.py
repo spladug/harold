@@ -90,6 +90,4 @@ def utc_offset(tz):
 def timerange_overlap(rangeA, rangeB):
     max_start = max(rangeA[0], rangeB[0])
     min_end = min(rangeA[1], rangeB[1])
-
-    print max_start, min_end
     return max_start < min_end
