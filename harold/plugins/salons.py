@@ -65,7 +65,7 @@ class SalonManagerPlugin(Plugin):
                 parse_time(deploy_hours_start),
                 parse_time(deploy_hours_end),
                 pytz.timezone(tz),
-                allow_deploys=True,
+                allow_deploys=allow_deploys,
             )
             salons.append(salon)
         returnValue(salons)
