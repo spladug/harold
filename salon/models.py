@@ -111,6 +111,9 @@ class Salon(db.Model):
 
     name = db.Column(db.String, primary_key=True, nullable=False)
     conch_emoji = db.Column(db.String, nullable=False)
+    deploy_hours_start = db.Column(db.String, default=True)
+    deploy_hours_end = db.Column(db.String, default=True)
+    tz = db.Column(db.String, default=True)
     allow_deploys = db.Column(db.Boolean, default=True)
 
 
