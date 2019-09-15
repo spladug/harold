@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 import functools
 import hashlib
 import hmac
@@ -41,23 +42,15 @@ class DeployConfig(PluginConfig):
     blackout_hours_end = Option(parse_time)
 
 
+class DeployHoldType(Enum):
+    code_freeze = 'Code Freeze'
+    manual = 'Manual'
+
+
 class DeployListener(ProtectedResource):
     def __init__(self, http, monitor):
         ProtectedResource.__init__(self, http)
         self.monitor = monitor
-
-
-class DeployGetSalonNamesListener(DeployListener):
-    isLeaf = True
-
-    def _handle_request(self, request):
-        salons = yield self.salons.all()
-        salon_names = [salon.name for salon in salons]
-
-        # Configure the response
-        request.setHeader("Content-Type", "application/json")
-        request.write(json.dumps(salon_names))
-        request.finish()
 
 
 class DeployStatusListener(resource.Resource):
@@ -169,6 +162,81 @@ class DeployProgressListener(DeployListener):
         self.monitor.onPushProgress(salon, id, host, index)
 
 
+class DeployHoldListener(DeployListener):
+    """
+    Trigger a deploy hold for specific salon
+    """
+    isLeaf = True
+
+    def _handle_request(self, request):
+        reason = request.args['reason'][0]
+        salon_name = request.args['salon_name'][0]
+        salon = yield self.monitor.salons.by_name(salon_name)
+        if not salon:
+            request.setResponseCode(400)
+
+        self.monitor.hold(self.monitor.irc, None, salon.channel, reason)
+
+
+class DeployUnHoldListener(DeployListener):
+    """
+    Remove a deploy hold on a specific salon
+    """
+    isLeaf = True
+
+    def _handle_request(self, request):
+        salon_name = request.args['salon_name'][0]
+        salon = yield self.monitor.salons.by_name(salon_name)
+        if not salon:
+            request.setResponseCode(400)
+        self.monitor.unhold(self.monitor.irc, None, salon.channel)
+
+
+class DeployHoldAllListener(DeployListener):
+    """
+    Trigger a deploy hold for all salons
+    """
+    isLeaf = True
+
+    def _handle_request(self, request):
+        reason = request.args['reason'][0]
+        self.monitor.hold(self.monitor.irc, None, None, reason)
+
+
+class DeployUnholdAllListener(DeployListener):
+    """
+    Remove a deploy hold for all salons
+    """
+    isLeaf = True
+
+    def _handle_request(self, request):
+        self.monitor.unhold_all(self.monitor.irc, None, None)
+
+
+class DeployGetSalonNamesListener(DeployListener):
+    isLeaf = True
+
+    def _handle_request(self, request):
+        salons = yield self.salons.all()
+        salon_names = [salon.name for salon in salons]
+
+        # Configure the response
+        request.setHeader("Content-Type", "application/json")
+        request.write(json.dumps(salon_names))
+        request.finish()
+
+
+class DeploySendAnnouncementListener(DeployListener):
+    """
+    Send an announcement message to ALL code salons
+    """
+    isLeaf = True
+
+    def _handle_request(self, request):
+        message = request.args['message'][0]
+        self.monitor.announce(self.monitor.irc, 'harold', None, message)
+
+
 class OngoingDeploy(object):
     pass
 
@@ -185,6 +253,8 @@ class Salon(object):
         self.tz = config.tz
         self.deploys = {}
         self.current_hold = None
+        self.current_hold_type = None
+        self.previous_freeze = None
         self.current_conch = ""
         self.queue = []
         self.current_topic = self._make_topic()
@@ -193,7 +263,10 @@ class Salon(object):
         deploy_count = len(self.deploys)
 
         if self.current_hold is not None:
-            status = ":no_entry_sign: deploys ON HOLD (%s)" % self.current_hold
+            if self.current_hold_type == DeployHoldType.code_freeze:
+                status = ":snowflake: CODE FREEZE -- No deploys (%s)" % self.current_hold
+            else:
+                status = ":no_entry_sign: deploys ON HOLD (%s)" % self.current_hold
         else:
             time_status = self.current_time_status()
 
@@ -247,17 +320,48 @@ class Salon(object):
             new_conch = None
         self.current_conch = new_conch
 
-    def hold(self, irc, reason):
+    def hold(self, irc, type, reason):
+        """
+        Sets a deploy hold status on a salon
+
+        :param irc: IrcPlugin object for sending IRC messages
+        :param type: DeployHoldType enum
+        :param reason: Reason text
+
+        :return: None
+        """
         if not reason:
             reason_text = "no reason given"
         else:
             reason_text = " ".join(reason)
+
+        # If the type is a manual hold and we are currently in a
+        # code freeze then there is likely some emergency that
+        # needs to be addressed.  However, once that hold has been
+        # lifted we wish to restore the previous freeze.  Thus we
+        # need to preserve the freeze reason for restoration.
+        if type == DeployHoldType.manual and self.current_hold_type == DeployHoldType.code_freeze:
+            self.previous_freeze = self.current_hold
+
         self.current_hold = reason_text
+        self.current_hold_type = type
         self.update_topic(irc)
 
     def unhold(self, irc):
-        self.current_hold = None
+        current_hold = None
+        current_hold_type = None
+
+        # If there was a freeze that had been preserved due to a
+        # manual hold being placed during the freeze, we should
+        # restore that.  Otherwise, simply lift the hold.
+        if self.previous_freeze:
+            current_hold_type = DeployHoldType.code_freeze
+            current_hold = self.previous_freeze
+
+        self.current_hold = current_hold
+        self.current_hold_type = current_hold_type
         self.update_topic(irc)
+        self.previous_freeze = None
 
     def remove_deploy(self, id):
         deploy = self.deploys.get(id)
@@ -636,13 +740,23 @@ class DeployMonitor(object):
         salon = yield self.salons.by_channel(channel)
         if not (salon and salon.allow_deploys):
             return
-        salon.hold(irc, reason)
+
+        type = DeployHoldType.manual
+        if 'freeze' in reason.lower():
+            type = DeployHoldType.code_freeze
+
+        salon.hold(irc, type, reason)
 
     @inlineCallbacks
     def hold_all(self, irc, sender, channel, *reason):
         salons = yield self.salons.all()
+
+        type = DeployHoldType.manual
+        if 'freeze' in reason.lower():
+            type = DeployHoldType.code_freeze
+
         for salon in salons:
-            salon.hold(irc, reason)
+            salon.hold(irc, type, reason)
 
     @inlineCallbacks
     def unhold(self, irc, sender, channel, *ignored):
@@ -914,7 +1028,6 @@ class DeployMonitor(object):
                 sender, message))
 
 
-
 def make_plugin(config, http, irc, salons):
     deploy_config = DeployConfig(config)
     monitor = DeployMonitor(deploy_config, irc, salons)
@@ -928,6 +1041,11 @@ def make_plugin(config, http, irc, salons):
     deploy_root.putChild('abort', DeployAbortedListener(http, monitor))
     deploy_root.putChild('error', DeployErrorListener(http, monitor))
     deploy_root.putChild('progress', DeployProgressListener(http, monitor))
+    deploy_root.putChild('hold', DeployHoldListener(http, monitor))
+    deploy_root.putChild('unhold', DeployUnHoldListener(http, monitor))
+    deploy_root.putChild('hold_all', DeployHoldAllListener(http, monitor))
+    deploy_root.putChild('unhold_all', DeployUnholdAllListener(http, monitor))
+    deploy_root.putChild('send_announcement', DeploySendAnnouncementListener(http, monitor))
     deploy_root.putChild('get_salon_names', DeployGetSalonNamesListener(http, monitor))
 
     # register our irc commands
