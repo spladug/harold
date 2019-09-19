@@ -3,9 +3,9 @@ import functools
 import hashlib
 import hmac
 import json
+import pytz
 import re
 import time
-import pytz
 
 from twisted.web import resource, server
 from twisted.internet import reactor, task
@@ -45,6 +45,19 @@ class DeployListener(ProtectedResource):
     def __init__(self, http, monitor):
         ProtectedResource.__init__(self, http)
         self.monitor = monitor
+
+
+class DeployGetSalonNamesListener(DeployListener):
+    isLeaf = True
+
+    def _handle_request(self, request):
+        salons = yield self.salons.all()
+        salon_names = [salon.name for salon in salons]
+
+        # Configure the response
+        request.setHeader("Content-Type", "application/json")
+        request.write(json.dumps(salon_names))
+        request.finish()
 
 
 class DeployStatusListener(resource.Resource):
@@ -915,6 +928,7 @@ def make_plugin(config, http, irc, salons):
     deploy_root.putChild('abort', DeployAbortedListener(http, monitor))
     deploy_root.putChild('error', DeployErrorListener(http, monitor))
     deploy_root.putChild('progress', DeployProgressListener(http, monitor))
+    deploy_root.putChild('get_salon_names', DeployGetSalonNamesListener(http, monitor))
 
     # register our irc commands
     irc.register_command(monitor.salonify)
