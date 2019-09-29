@@ -46,14 +46,15 @@ class ProtectedResource(resource.Resource):
             raise AuthenticationError
 
     def render_GET(self, request):
+        response = ""
         try:
             self._authenticate_request(request)
         except AuthenticationError:
             request.setResponseCode(403)
         else:
-            self._handle_request(request)
+            response = self._handle_request(request)
 
-        return ""
+        return response
 
     def render_POST(self, request):
         try:

@@ -217,13 +217,19 @@ class DeployGetSalonNamesListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
-        salons = yield self.salons.all()
-        salon_names = [salon.name for salon in salons]
 
-        # Configure the response
-        request.setHeader("Content-Type", "application/json")
-        request.write(json.dumps(salon_names))
-        request.finish()
+        def send_response(salons):
+            salon_names = [salon.name for salon in salons]
+
+            # Configure the response
+            request.setHeader("Content-Type", "application/json")
+            request.write(json.dumps(salon_names))
+            request.finish()
+
+        salons_deferred = self.monitor.salons.all()
+        salons_deferred.addCallback(send_response)
+
+        return server.NOT_DONE_YET
 
 
 class DeploySendAnnouncementListener(DeployListener):
