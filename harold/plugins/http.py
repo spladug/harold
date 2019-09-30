@@ -51,9 +51,9 @@ class ProtectedResource(resource.Resource):
         except AuthenticationError:
             request.setResponseCode(403)
         else:
-            self._handle_request(request)
+            response = self._handle_request(request)
 
-        return ""
+        return response or ""
 
     def render_POST(self, request):
         try:
