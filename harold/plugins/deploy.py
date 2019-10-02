@@ -171,11 +171,7 @@ class DeployHoldListener(DeployListener):
     def _handle_request(self, request):
         reason = request.args['reason'][0]
         salon_name = request.args['salon_name'][0]
-        salon = yield self.monitor.salons.by_name(salon_name)
-        if not salon:
-            request.setResponseCode(400)
-
-        self.monitor.hold(self.monitor.irc, None, salon.channel, reason)
+        self.monitor.hold(self.monitor.irc, None, salon_name, reason)
 
 
 class DeployUnHoldListener(DeployListener):
@@ -186,10 +182,7 @@ class DeployUnHoldListener(DeployListener):
 
     def _handle_request(self, request):
         salon_name = request.args['salon_name'][0]
-        salon = yield self.monitor.salons.by_name(salon_name)
-        if not salon:
-            request.setResponseCode(400)
-        self.monitor.unhold(self.monitor.irc, None, salon.channel)
+        self.monitor.unhold(self.monitor.irc, None, salon_name)
 
 
 class DeployHoldAllListener(DeployListener):
@@ -200,7 +193,7 @@ class DeployHoldAllListener(DeployListener):
 
     def _handle_request(self, request):
         reason = request.args['reason'][0]
-        self.monitor.hold(self.monitor.irc, None, None, reason)
+        self.monitor.hold_all(self.monitor.irc, None, None, reason)
 
 
 class DeployUnholdAllListener(DeployListener):
@@ -226,6 +219,10 @@ class DeployGetSalonNamesListener(DeployListener):
             request.write(json.dumps(salon_names))
             request.finish()
 
+        # The 'all' method returns a Twisted Deferred object.
+        # So we have to handle this request in an asynchronous
+        # manner by adding a callback to handle the asynchronous
+        # execution.
         salons_deferred = self.monitor.salons.all()
         salons_deferred.addCallback(send_response)
 
@@ -748,7 +745,7 @@ class DeployMonitor(object):
             return
 
         type = DeployHoldType.manual
-        if 'freeze' in reason.lower():
+        if 'freeze' in reason[0].lower():
             type = DeployHoldType.code_freeze
 
         salon.hold(irc, type, reason)
@@ -758,7 +755,7 @@ class DeployMonitor(object):
         salons = yield self.salons.all()
 
         type = DeployHoldType.manual
-        if 'freeze' in reason.lower():
+        if 'freeze' in reason[0].lower():
             type = DeployHoldType.code_freeze
 
         for salon in salons:
