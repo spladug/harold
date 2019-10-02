@@ -745,7 +745,8 @@ class DeployMonitor(object):
             return
 
         type = DeployHoldType.manual
-        if 'freeze' in reason[0].lower():
+        # 'reason' is the reason string broken down as a tuple of words
+        if 'freeze' in ' '.join(reason).lower():
             type = DeployHoldType.code_freeze
 
         salon.hold(irc, type, reason)
@@ -755,7 +756,8 @@ class DeployMonitor(object):
         salons = yield self.salons.all()
 
         type = DeployHoldType.manual
-        if 'freeze' in reason[0].lower():
+        # 'reason' is the reason string broken down as a tuple of words
+        if 'freeze' in ' '.join(reason).lower():
             type = DeployHoldType.code_freeze
 
         for salon in salons:
