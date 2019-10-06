@@ -172,8 +172,7 @@ class DeployHoldListener(DeployListener):
         reason = request.args['reason'][0]
         salon_name = request.args['salon'][0]
         channel = '#' + salon_name
-        self.monitor.hold(self.monitor.irc, None, channel, reason)
-
+        self.monitor.hold(self.monitor.irc.bot, None, channel, reason)
 
 class DeployUnHoldListener(DeployListener):
     """
@@ -184,8 +183,7 @@ class DeployUnHoldListener(DeployListener):
     def _handle_request(self, request):
         salon_name = request.args['salon'][0]
         channel = '#' + salon_name
-        self.monitor.unhold(self.monitor.irc, None, channel)
-
+        self.monitor.unhold(self.monitor.irc.bot, None, channel)
 
 class DeployHoldAllListener(DeployListener):
     """
@@ -195,7 +193,7 @@ class DeployHoldAllListener(DeployListener):
 
     def _handle_request(self, request):
         reason = request.args['reason'][0]
-        self.monitor.hold_all(self.monitor.irc, None, None, reason)
+        self.monitor.hold_all(self.monitor.irc.bot, None, None, reason)
 
 
 class DeployUnholdAllListener(DeployListener):
@@ -205,7 +203,7 @@ class DeployUnholdAllListener(DeployListener):
     isLeaf = True
 
     def _handle_request(self, request):
-        self.monitor.unhold_all(self.monitor.irc, None, None)
+        self.monitor.unhold_all(self.monitor.irc.bot, None, None)
 
 
 class DeployGetSalonNamesListener(DeployListener):
