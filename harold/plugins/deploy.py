@@ -237,7 +237,7 @@ class DeploySendAnnouncementListener(DeployListener):
 
     def _handle_request(self, request):
         message = request.args['message'][0]
-        self.monitor.announce(self.monitor.irc, 'harold', None, message)
+        self.monitor.announce(self.monitor.irc.bot, 'harold', None, message)
 
 
 class OngoingDeploy(object):
