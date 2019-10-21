@@ -3,7 +3,7 @@
 
 {% block content %}
   <div class="listing">
-    <h2>to review</h2>
+    <h2>to review (<abbr title="as soon as possible">asap</abbr>, within one business day)</h2>
     {% for state, blocker in [("haircut", True), ("unreviewed", True), ("nail_care", False), ("fish", False)]: %}
     <details {{ "open" if blocker or not to_review[state] else "" }}>
       <summary>

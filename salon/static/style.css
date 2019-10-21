@@ -154,3 +154,7 @@ summary {
 summary::-webkit-details-marker {
     display: none;
 }
+
+abbr {
+    text-decoration: none;
+}
