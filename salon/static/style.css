@@ -145,6 +145,10 @@ details:not([open]) summary::after {
     margin-left: 25px;
 }
 
+details[open] summary .count {
+    display: none;
+}
+
 summary {
     list-style: none;
     margin: 1.5em 0 0 0;

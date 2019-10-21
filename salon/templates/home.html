@@ -7,7 +7,7 @@
     {% for state, blocker in [("haircut", True), ("unreviewed", True), ("nail_care", False), ("fish", False)]: %}
     <details {{ "open" if blocker or not to_review[state] else "" }}>
       <summary>
-        <h3 class="state-{{ state }}">{{ state_meanings[state] }} ({{ to_review[state] | length }})</h3>
+        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span class="count">({{ to_review[state] | length }})</span></h3>
       </summary>
       {% for pull_request in to_review[state]: %}
       <div class="pull-request">
@@ -36,7 +36,7 @@
     {% for state in ["fish", "eyeglasses", "nail_care", "unreviewed", "haircut"]: %}
     <details open>
       <summary>
-        <h3 class="state-{{ state }}">{{ state_meanings[state] }} ({{ my_pulls[state] | length }})</h3>
+        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span class="count">({{ my_pulls[state] | length }})</span></h3>
       </summary>
       {% for pull_request in my_pulls[state]: %}
       <div class="pull-request">
