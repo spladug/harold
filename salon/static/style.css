@@ -158,3 +158,8 @@ summary::-webkit-details-marker {
 abbr {
     text-decoration: none;
 }
+
+.tooslow {
+    color: red;
+    font-weight: bold;
+}

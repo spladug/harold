@@ -12,6 +12,14 @@
   {% endif %}
 {%- endmacro %}
 
-{% macro timestamp(ts) -%}
-<time datetime="{{ ts.isoformat() }}Z" title="{{ ts.strftime("%a %d %b %Y") }}" >{{ ts.strftime("%Y-%m-%d %H:%M") }}</time>
+{% macro timestamp(ts, deadline=None) -%}
+<time
+  {% if deadline and ts < deadline %}
+  class="tooslow"
+  {% endif %}
+
+  datetime="{{ ts.isoformat() }}Z"
+  title="{{ ts.strftime("%a %d %b %Y") }}" >
+  {{ ts.strftime("%Y-%m-%d %H:%M") }}
+</time>
 {%- endmacro %}

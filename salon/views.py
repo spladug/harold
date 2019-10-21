@@ -1,4 +1,5 @@
 import collections
+import datetime
 import re
 
 from flask import render_template, request, g
@@ -37,6 +38,9 @@ def inject_descriptions():
             "running": "unable to review",
             "eyeglasses": "awaiting reviewer summoning",
         },
+
+        "review_deadline": datetime.datetime.utcnow() - datetime.timedelta(hours=24),
+        "merge_deadline": datetime.datetime.utcnow() - datetime.timedelta(days=30),
     }
 
 

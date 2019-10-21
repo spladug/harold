@@ -7,13 +7,13 @@
     {% for state, blocker in [("haircut", True), ("unreviewed", True), ("nail_care", False), ("fish", False)]: %}
     <details {{ "open" if blocker or not to_review[state] else "" }}>
       <summary>
-        <h3 class="state-{{ state }}">{{ state_meanings[state] }}</h3>
+        <h3 class="state-{{ state }}">{{ state_meanings[state] }} ({{ to_review[state] | length }})</h3>
       </summary>
       {% for pull_request in to_review[state]: %}
       <div class="pull-request">
         <h4>{{ utils.truncated_title(pull_request.title, pull_request.url) }}</h4>
         <p class="tagline">
-          {{ utils.timestamp(pull_request.state_for_user(username).timestamp) }}
+          {{ utils.timestamp(pull_request.state_for_user(username).timestamp, review_deadline if blocker else None) }}
           &middot;
           <a href="https://{{ config.GITHUB_HOSTNAME }}/{{ pull_request.author }}">@{{ pull_request.author }}</a>
           &middot;
@@ -32,10 +32,12 @@
   </div>
 
   <div class="listing">
-    <h2>my pull requests</h2>
+    <h2>my pull requests (don't let these linger)</h2>
     {% for state in ["fish", "eyeglasses", "nail_care", "unreviewed", "haircut"]: %}
     <details open>
-      <summary><h3 class="state-{{ state }}">{{ state_meanings[state] }}</h3></summary>
+      <summary>
+        <h3 class="state-{{ state }}">{{ state_meanings[state] }} ({{ my_pulls[state] | length }})</h3>
+      </summary>
       {% for pull_request in my_pulls[state]: %}
       <div class="pull-request">
         <ul class="review-states">
@@ -48,7 +50,7 @@
 
         <h4>{{ utils.truncated_title(pull_request.title, pull_request.url) }}</h4>
         <p class="tagline">
-          {{ utils.timestamp(pull_request.created) }}
+          {{ utils.timestamp(pull_request.created, merge_deadline) }}
           &middot;
           <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
         </p>
