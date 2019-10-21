@@ -1,4 +1,5 @@
 import collections
+import re
 
 from flask import render_template, request, g
 
@@ -6,9 +7,15 @@ from salon.app import app
 from salon.models import db, PullRequest, EmailAddress
 
 
+EMAIL_SANITY_CHECK_RE = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
+
+
 @app.before_request
 def get_username():
     okta_id = request.headers["Authenticated-User"].lower()
+
+    if not EMAIL_SANITY_CHECK_RE.match(okta_id):
+        return render_template("bad-email.html")
 
     email_address = EmailAddress.query.get(okta_id)
     if not email_address:
