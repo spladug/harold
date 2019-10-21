@@ -64,6 +64,7 @@ def salon(override_username=None):
     return render_template(
         "home.html",
         username=username,
+        username_overridden=bool(override_username),
         my_pulls=my_pulls,
         to_review=to_review,
     )

@@ -2,8 +2,16 @@
 {% import "utils.html" as utils %}
 
 {% block content %}
+  {% if username_overridden: %}
+  <p class="banner">You are viewing @{{username}}'s salon. <a href="/" target="_self">Go back to your salon.</a></p>
+  {% endif %}
+
   <div class="listing">
+    {% if not username_overridden: %}
     <h2>to review (<abbr title="as soon as possible">asap</abbr>, within one business day)</h2>
+    {% else %}
+    <h2>@{{username}} needs to review</h2>
+    {% endif %}
     {% for state, blocker in [("haircut", True), ("unreviewed", True), ("nail_care", False), ("fish", False)]: %}
     <details {{ "open" if blocker or not to_review[state] else "" }}>
       <summary>
@@ -21,7 +29,7 @@
         </p>
       </div>
       {% else %}
-      {% if blocker %}
+      {% if blocker and not username_overridden %}
       <p class="nada">all clear! thank you</p>
       {% else %}
       <p class="nada" lang="es">nada</p>
@@ -32,7 +40,12 @@
   </div>
 
   <div class="listing">
+    {% if not username_overridden: %}
     <h2>my pull requests (don't let these linger)</h2>
+    {% else %}
+    <h2>@{{username}}'s pull requests</h2>
+    {% endif %}
+
     {% for state in ["fish", "eyeglasses", "nail_care", "unreviewed", "haircut"]: %}
     <details open>
       <summary>

@@ -167,3 +167,10 @@ abbr {
     color: red;
     font-weight: bold;
 }
+
+.banner {
+    background: #ffc356;
+    margin-top: 0;
+    padding: 9px;
+    width: 594px;
+}
