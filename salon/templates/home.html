@@ -23,9 +23,9 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.state_for_user(username).timestamp, review_deadline if blocker else None) }}
           &middot;
-          <a href="https://{{ config.GITHUB_HOSTNAME }}/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+          <a href="/user/{{ pull_request.author }}" target="_self">@{{ pull_request.author }}</a>
           &middot;
-          <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
+          {{ pull_request.repository }}#{{ pull_request.id }}
         </p>
       </div>
       {% else %}
@@ -56,7 +56,7 @@
         <ul class="review-states">
           {% for user, state in pull_request.current_states().iteritems(): %}
             {% if user != pull_request.author or state.state != "unreviewed": %}
-            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}">:{{ state.state }}:</li>
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}" target="_self">:{{ state.state }}:</a></li>
             {% endif %}
           {% endfor %}
         </ul>
@@ -65,7 +65,7 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.created, merge_deadline) }}
           &middot;
-          <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
+          {{ pull_request.repository }}#{{ pull_request.id }}
         </p>
       </div>
       {% else %}

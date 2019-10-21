@@ -104,6 +104,10 @@ h3 + .pull-request {
     background-position: center center;
 }
 
+.state a {
+    display: block;
+}
+
 ul.review-states {
     margin: 0;
     padding: 0;
