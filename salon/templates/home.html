@@ -31,7 +31,7 @@
           &middot;
           <a href="/user/{{ pull_request.author }}" target="_self">@{{ pull_request.author }}</a>
           &middot;
-          {{ pull_request.repository }}#{{ pull_request.id }}
+          <a href="/repo/{{ pull_request.repository }}" target="_self">{{ pull_request.repository }}</a>#{{ pull_request.id }}
         </p>
       </div>
       {% else %}
@@ -71,7 +71,7 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.created, merge_deadline) }}
           &middot;
-          {{ pull_request.repository }}#{{ pull_request.id }}
+          <a href="/repo/{{ pull_request.repository }}" target="_self">{{ pull_request.repository }}</a>#{{ pull_request.id }}
         </p>
       </div>
       {% else %}

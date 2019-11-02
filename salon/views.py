@@ -88,3 +88,13 @@ def overview():
         "overview.html",
         pull_requests=pull_requests,
     )
+
+
+@app.route("/repo/<path:repo_name>")
+def repo(repo_name):
+    pull_requests = collections.defaultdict(list)
+    for pull_request in PullRequest.by_repository(repo_name):
+        stage = pull_request.review_stage()
+        pull_requests[stage].append(pull_request)
+
+    return render_template("repo.html", repo_name=repo_name, pull_requests=pull_requests)

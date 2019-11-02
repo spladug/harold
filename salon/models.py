@@ -90,6 +90,16 @@ class PullRequest(db.Model):
                 .order_by(db.asc(PullRequest.created))
         )
 
+    @classmethod
+    def by_repository(cls, repo_name):
+        return (
+            PullRequest.query
+                .options(db.subqueryload(PullRequest.states))
+                .filter(PullRequest.state == "open")
+                .filter(db.func.lower(PullRequest.repository) == repo_name)
+                .order_by(db.asc(PullRequest.created))
+        )
+
 
 class ReviewState(db.Model):
     __tablename__ = "github_review_states"

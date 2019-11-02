@@ -12,7 +12,7 @@
     <div class="pull-request">
       <ul class="review-states">
         {% for user, state in pull_request.current_states().iteritems(): %}
-          <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}">:{{ state.state }}:</li>
+          <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}" target="_self">:{{ state.state }}:</a></li>
         {% endfor %}
       </ul>
 
@@ -40,7 +40,7 @@
     <div class="pull-request">
       <ul class="review-states">
         {% for user, state in pull_request.current_states().iteritems(): %}
-          <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}">:{{ state.state }}:</li>
+          <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}" target="_self">:{{ state.state }}:</a></li>
         {% endfor %}
       </ul>
 

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% import "utils.html" as utils %}
+
+{% block content %}
+  <nav class="banner">
+    You are viewing pull requests in {{ repo_name }}. <a href="/" target="_self">Go back to your salon.</a>
+  </nav>
+
+  <section class="listing">
+    <h2>waiting for author</h2>
+    {% for state in ["fish", "eyeglasses", "nail_care"]: %}
+    <details open>
+      <summary>
+        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span class="count">({{ pull_requests[state] | length }})</span></h3>
+      </summary>
+      {% for pull_request in pull_requests[state]: %}
+      <div class="pull-request">
+        <ul class="review-states">
+          {% for user, state in pull_request.current_states().iteritems(): %}
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}" target="_self">:{{ state.state }}:</a></li>
+          {% endfor %}
+        </ul>
+
+        <h4>{{ utils.truncated_title(pull_request.title, pull_request.url) }}</h4>
+
+        <p class="tagline">
+          {{ utils.timestamp(pull_request.created, merge_deadline) }}
+          &middot;
+          <a href="/user/{{ pull_request.author }}" target="_self">@{{ pull_request.author }}</a>
+          &middot;
+          #{{ pull_request.id }}
+        </p>
+      </div>
+      {% else %}
+      <p class="nada" lang="es">nada</p>
+      {% endfor %}
+      </details>
+    {% endfor %}
+  </section>
+
+  <section class="listing">
+    <h2>waiting for reviewers</h2>
+
+  {% for state in ["haircut", "unreviewed"]: %}
+    <details open>
+      <summary>
+        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span class="count">({{ pull_requests[state] | length }})</span></h3>
+      </summary>
+      {% for pull_request in pull_requests[state]: %}
+      <div class="pull-request">
+        <ul class="review-states">
+          {% for user, state in pull_request.current_states().iteritems(): %}
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}" target="_self">:{{ state.state }}:</a></li>
+          {% endfor %}
+        </ul>
+
+        <h4>{{ utils.truncated_title(pull_request.title, pull_request.url) }}</h4>
+
+        <p class="tagline">
+          {{ utils.timestamp(pull_request.created, None) }}
+          &middot;
+          <a href="/user/{{ pull_request.author }}" target="_self">@{{ pull_request.author }}</a>
+          &middot;
+          #{{ pull_request.id }}
+        </p>
+      </div>
+      {% else %}
+      <p class="nada" lang="es">nada</p>
+      {% endfor %}
+    </details>
+    {% endfor %}
+  </section>
+
+  <script src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/timetext.js') }}"></script>
+
+{% endblock %}
