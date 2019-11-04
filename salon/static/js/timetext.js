@@ -27,6 +27,21 @@ timetext = {
         ]
     })(),
 
+    _businessDays: function(then, now) {
+        var current = new Date(then)
+        var businessDayCount = 0
+
+        while (current < now) {
+            var dayOfWeek = current.getDay()
+            if (dayOfWeek != 6 && dayOfWeek != 0) {
+                businessDayCount += 1
+            }
+            current.setDate(current.getDate() + 1)
+        }
+
+        return businessDayCount - 1
+    },
+
     init: function () {
         this.refresh()
         setInterval(this.refresh, 60000)
@@ -64,6 +79,13 @@ timetext = {
         })
 
         $el.text(text)
+
+        var deadline = $el.data('deadline')
+        if (deadline) {
+            var businessDays = timetext._businessDays(timestamp, now)
+            var pastDeadline = businessDays >= deadline
+            $el.toggleClass('tooslow', pastDeadline)
+        }
     }
 }
 

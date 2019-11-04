@@ -39,8 +39,8 @@ def inject_descriptions():
             "eyeglasses": "awaiting reviewer summoning",
         },
 
-        "review_deadline": datetime.datetime.utcnow() - datetime.timedelta(hours=24),
-        "merge_deadline": datetime.datetime.utcnow() - datetime.timedelta(days=30),
+        "review_deadline": 1,
+        "merge_deadline": 28,
     }
 
 
