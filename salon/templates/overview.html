@@ -2,11 +2,14 @@
 {% import "utils.html" as utils %}
 
 {% block content %}
-<div class="listing">
-  <h2>author's court</h2>
+<section class="listing">
+  <h2>waiting for author</h2>
 
   {% for state in ["fish", "eyeglasses", "nail_care"]: %}
-  <h3 class="state-{{ state }}">{{ state_meanings[state] }}</h3>
+  <details open>
+    <summary>
+      <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span>({{ pull_requests[state] | length }})</span></h3>
+    </summary>
 
     {% for pull_request in pull_requests[state]: %}
     <div class="pull-request">
@@ -21,20 +24,24 @@
       <p class="tagline">
         {{ utils.timestamp(pull_request.created) }}
         &middot;
-        <a href="https://{{ config.GITHUB_HOSTNAME }}/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+        <a href="/user/{{ pull_request.author }}" target="_self">@{{ pull_request.author }}</a>
         &middot;
-        <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
+        <a href="/repo/{{ pull_request.repository }}" target="_self">{{ pull_request.repository }}</a>#{{ pull_request.id }}
       </p>
     </div>
     {% endfor %}
+  </details>
   {% endfor %}
-</div>
+</section>
 
-<div class="listing">
-  <h2>reviewers' court</h2>
+<section class="listing">
+  <h2>waiting for reviewers</h2>
 
   {% for state in ["haircut", "unreviewed"]: %}
-  <h3 class="state-{{ state }}">{{ state_meanings[state] }}</h3>
+  <details open>
+    <summary>
+      <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span>({{ pull_requests[state] | length }})</span></h3>
+    </summary>
 
     {% for pull_request in pull_requests[state]: %}
     <div class="pull-request">
@@ -49,12 +56,13 @@
       <p class="tagline">
         {{ utils.timestamp(pull_request.created) }}
         &middot;
-        <a href="https://{{ config.GITHUB_HOSTNAME }}/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+        <a href="/user/{{ pull_request.author }}" target="_self">@{{ pull_request.author }}</a>
         &middot;
-        <a href="{{ pull_request.url }}">{{ pull_request.repository }}#{{ pull_request.id }}</a>
+        <a href="/repo/{{ pull_request.repository }}" target="_self">{{ pull_request.repository }}</a>#{{ pull_request.id }}
       </p>
     </div>
     {% endfor %}
+  </details>
   {% endfor %}
-</div>
+</section>
 {% endblock %}

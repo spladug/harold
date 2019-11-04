@@ -205,3 +205,18 @@ footer {
     padding-top: 1em;
     margin-bottom: 2em;
 }
+
+footer ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+footer ul li {
+    display: inline-block;
+    border-left: 1px solid #ccc;
+    padding: 0 1em;
+}
+
+footer ul li:first-child {
+    border-left: none;
+}

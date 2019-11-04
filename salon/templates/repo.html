@@ -11,7 +11,7 @@
     {% for state in ["fish", "eyeglasses", "nail_care"]: %}
     <details open>
       <summary>
-        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span class="count">({{ pull_requests[state] | length }})</span></h3>
+        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span>({{ pull_requests[state] | length }})</span></h3>
       </summary>
       {% for pull_request in pull_requests[state]: %}
       <div class="pull-request">
@@ -44,7 +44,7 @@
   {% for state in ["haircut", "unreviewed"]: %}
     <details open>
       <summary>
-        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span class="count">({{ pull_requests[state] | length }})</span></h3>
+        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span>({{ pull_requests[state] | length }})</span></h3>
       </summary>
       {% for pull_request in pull_requests[state]: %}
       <div class="pull-request">
