@@ -1,6 +1,5 @@
 body {
     font-family: monospace;
-    width: 1244px;
     position: absolute;
     margin: 0 8px;
 }
@@ -31,15 +30,21 @@ h1 {
 }
 
 .listing {
-    width: 600px;
+    max-width: 600px;
     padding: 6px;
-    margin: 0 10px 0 0;
+    margin: 0 10px 2em 0;
     float: left;
+}
+
+@media (min-width: 600px) {
+    .listing {
+        width: 600px;
+    }
 }
 
 h2 {
     margin: -6px;
-    padding: 6px 6px 6px 32px;
+    padding: 6px 32px 6px 32px;
     color: white;
     background: #666;
     font-variant: small-caps;
@@ -63,7 +68,7 @@ h4 {
 }
 
 .pull-request, .nada {
-    width: 572px;
+    max-width: 572px;
     padding: 3px 3px 3px 5px;
     margin-left: 20px;
 }
@@ -179,7 +184,7 @@ nav.banner {
     background: #ffc356;
     margin: 0 0 1em 0;
     padding: 9px;
-    width: 594px;
+    max-width: 594px;
 }
 
 .toolbox {
@@ -187,4 +192,11 @@ nav.banner {
     top: 70px;
     right: 10px;
     padding: .7em;
+}
+
+footer {
+    clear: both;
+    border-top: 1px solid #ccc;
+    padding-top: 1em;
+    margin-bottom: 2em;
 }

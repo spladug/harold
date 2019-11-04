@@ -2,11 +2,7 @@
 {% import "utils.html" as utils %}
 
 {% block content %}
-  {% if not username_overridden: %}
-  <nav class="toolbox">
-    <a href="https://github.com/spladug/harold/wiki/Code-Salon-Emoji">what do all these emoji mean?</a>
-  </nav>
-  {% else %}
+  {% if username_overridden: %}
   <nav class="banner">
     You are viewing @{{username}}'s salon. <a href="/" target="_self">Go back to your salon.</a>
   </nav>
@@ -80,6 +76,10 @@
     </details>
     {% endfor %}
   </section>
+
+  <footer>
+    <a href="https://github.com/spladug/harold/wiki/Code-Salon-Emoji">what do all these emoji mean?</a>
+  </footer>
 
   <script src="{{ url_for('static', filename='js/jquery.js') }}"></script>
   <script src="{{ url_for('static', filename='js/timetext.js') }}"></script>
