@@ -96,7 +96,7 @@ class PullRequest(db.Model):
             PullRequest.query
                 .options(db.subqueryload(PullRequest.states))
                 .filter(PullRequest.state == "open")
-                .filter(db.func.lower(PullRequest.repository) == repo_name)
+                .filter(db.func.lower(PullRequest.repository) == repo_name.lower())
                 .order_by(db.asc(PullRequest.created))
         )
 
