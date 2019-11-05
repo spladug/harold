@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% import "utils.html" as utils %}
+
+{% block content %}
+<style>
+  table {
+    margin: -2px 0 0 -2px;
+    border-spacing: 2px;
+  }
+
+  thead th {
+    font-size: 18px;
+    font-variant: small-caps;
+    color: white;
+    background: #666;
+    padding: 6px 32px;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 12px 32px;
+  }
+
+  th[scope="row"], td {
+    font-weight: normal;
+  }
+
+  tr:nth-child(even) {
+    background: #f0f0f0;
+  }
+
+  td.error {
+    color: #400;
+    background-color: #fcc;
+  }
+</style>
+
+<table>
+  <thead>
+    <th scope="col">name</th>
+    <th scope="col">status</th>
+    <th scope="col">conch</th>
+    <th scope="col">queue</th>
+    <th scope="col">deploy</th>
+  </thead>
+  <tbody>
+    {% for salon in salons | selectattr("allow_deploys") | sort(attribute="name") %}
+    <tr>
+      <th scope="row"><a href="{{ config.CHATHOST }}/{{ salon["name"] }}">#{{ salon["name"] }}</a>
+
+      {% if salon["hold"] %}
+      <td class="error">
+      🚫 HOLD: {{ salon["hold"] }}
+      {% elif salon["status"] == "cleanup_time": %}
+      <td>
+      🤔 near end of deploy hours
+      {% elif salon["status"] == "after_hours": %}
+      <td>
+      💤 outside deploy hours
+      {% else %}
+      <td>👍
+      {% endif %}
+
+      <td>{{ salon["queue"] | first }}
+      <td>
+        {% if salon["queue"] %}
+        {{ salon["queue"] | length - 1 }} more
+        {% endif %}
+      <td>
+        {% if salon["deploys"] | length > 1 %}
+        multiple deploys ongoing
+        {% elif salon["deploys"] | length == 1: %}
+        {{ salon["deploys"][0]["user"] }} is {{ (salon["deploys"][0]["completion"] * 100) | int }}% done deploying
+        {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

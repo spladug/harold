@@ -466,6 +466,9 @@ class SalonManager(object):
         self.salon_config_db = salon_config_db
         self.salons = {}
 
+        looper = task.LoopingCall(self._write_status)
+        looper.start(10)
+
     @inlineCallbacks
     def all(self):
         salon_configs = yield self.salon_config_db.get_salons()
@@ -513,6 +516,30 @@ class SalonManager(object):
     def destroy(self, channel_name):
         yield self.salon_config_db.delete_salon(channel_name.lstrip("#"))
         del self.salons[channel_name]
+
+    def _write_status(self):
+        data = []
+
+        for salon in self.salons.itervalues():
+            data.append({
+                "name": salon.name,
+                "allow_deploys": bool(salon.allow_deploys),
+                "deploy_hours_start": salon.deploy_hours_start.isoformat(),
+                "deploy_hours_end": salon.deploy_hours_end.isoformat(),
+                "timezone": str(salon.tz),
+                "deploys": [
+                    {
+                        "user": d.who,
+                        "completion": float(d.completion) / d.host_count,
+                    } for d in salon.deploys
+                ],
+                "hold": salon.current_hold,
+                "queue": salon.queue,
+                "status": salon.current_time_status(),
+            })
+
+        with open("/var/lib/harold/salons.json", "w") as f:
+            json.dump(data, f)
 
 
 class DeployMonitor(object):
@@ -761,21 +788,8 @@ class DeployMonitor(object):
                   (sender, d.who, d.id, status, d.when.strftime("%H:%M"),
                    d.args, d.log_path))
 
-    @inlineCallbacks
     def status_all(self, irc, sender, channel):
-        salons = yield self.salons.all()
-        for salon in sorted(salons, key=lambda s: s.name):
-            if salon.allow_deploys:
-                in_queue = len(salon.queue)
-                deploys = len(salon.deploys)
-
-                if in_queue == deploys == 0:
-                    irc.send_message(channel, "%s is quiet :heavy_check_mark:" % (salon.channel))
-                else:
-                    irc.send_message(channel, "%s has %d deploy(s) active and %d in queue :hourglass:" % (
-                        salon.channel, deploys, in_queue))
-            else:
-                irc.send_message(channel, "%s does not allow deploys :heavy_check_mark:" % salon.channel)
+        irc.send_message(channel, "status_all is now on the salon dashboard")
 
     @inlineCallbacks
     def hold(self, irc, sender, channel, *reason):

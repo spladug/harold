@@ -1,5 +1,6 @@
 import collections
 import datetime
+import json
 import re
 
 from flask import render_template, request, g
@@ -98,3 +99,14 @@ def repo(repo_name):
         pull_requests[stage].append(pull_request)
 
     return render_template("repo.html", repo_name=repo_name, pull_requests=pull_requests)
+
+
+@app.route("/salons")
+def salons():
+    with open("/var/lib/harold/salons.json") as f:
+        salons = json.load(f)
+
+    return render_template(
+        "salons.html",
+        salons=salons,
+    )
