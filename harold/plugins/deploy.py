@@ -32,6 +32,12 @@ MAX_SKEW_SECONDS = 60
 # how long in seconds before we consider a deploy broken and remove it
 DEPLOY_TTL = 3600
 
+# how long in seconds before we warn the user their conch is about to expire
+CONCH_TTL = 60*55
+
+# how long in seconds they have to respond before we actually expire it
+CONCH_GRACE = 60*5
+
 
 class DeployConfig(PluginConfig):
     organizations = Option(tup)
@@ -261,6 +267,7 @@ class Salon(object):
         self.current_conch = ""
         self.queue = []
         self.current_topic = self._make_topic()
+        self.conch_lease = None
 
     def _make_topic(self):
         deploy_count = len(self.deploys)
@@ -319,9 +326,41 @@ class Salon(object):
 
                 if len(self.queue) > 1:
                     irc.send_message(self.channel, "@%s: you're up next. please get ready!" % self.queue[1])
+
+                self.reset_conch_lease(irc, new_conch)
         else:
             new_conch = None
+
+        if new_conch is None:
+            self.reset_conch_lease(irc, None)
+
         self.current_conch = new_conch
+
+    def reset_conch_lease(self, irc, new_holder):
+        if self.conch_lease and self.conch_lease.active():
+            self.conch_lease.cancel()
+
+        if new_holder:
+            self.conch_lease = reactor.callLater(CONCH_TTL, self.warn_conch_lease_expiration, irc)
+
+    def warn_conch_lease_expiration(self, irc):
+        if self.current_conch:
+            if self.deploys:
+                irc.send_message(self.channel, "automatically extending your time with the %s since a deploy is ongoing" % (self.conch_emoji,))
+                self.conch_lease = reactor.callLater(CONCH_GRACE, self.warn_conch_lease_expiration, irc)
+                return
+
+            irc.send_message(self.channel, "@%s: your time with the %s expires in 5 minutes. if you still need it, say `harold acquire`" % (self.current_conch, self.conch_emoji))
+            self.conch_lease = reactor.callLater(CONCH_GRACE, self.expire_conch, irc)
+
+    def expire_conch(self, irc):
+        if self.current_conch:
+            irc.send_message(self.channel, "@%s: your time with the %s has reached an end" % (self.current_conch, self.conch_emoji))
+            self.queue.remove(self.current_conch)
+            self.conch_lease = None
+
+            self.update_conch(irc)
+            self.update_topic(irc)
 
     def hold(self, irc, type, reason):
         """
@@ -783,7 +822,11 @@ class DeployMonitor(object):
             return
 
         if sender in salon.queue:
-            irc.send_message(channel, "@%s: you are already in the queue" % sender)
+            if salon.current_conch == sender:
+                salon.reset_conch_lease(irc, sender)
+                irc.send_message(channel, "@%s: your time with the %s has been extended" % (sender, salon.conch_emoji))
+            else:
+                irc.send_message(channel, "@%s: you are already in the queue" % sender)
             return
 
         if salon.queue:
