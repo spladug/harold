@@ -1,5 +1,4 @@
 import datetime
-from enum import Enum
 import functools
 import hashlib
 import hmac
@@ -7,6 +6,9 @@ import json
 import pytz
 import re
 import time
+import traceback
+
+from enum import Enum
 
 from twisted.web import resource, server
 from twisted.internet import reactor, task
@@ -518,28 +520,32 @@ class SalonManager(object):
         del self.salons[channel_name]
 
     def _write_status(self):
-        data = []
+        try:
+            data = []
 
-        for salon in self.salons.itervalues():
-            data.append({
-                "name": salon.name,
-                "allow_deploys": bool(salon.allow_deploys),
-                "deploy_hours_start": salon.deploy_hours_start.isoformat(),
-                "deploy_hours_end": salon.deploy_hours_end.isoformat(),
-                "timezone": str(salon.tz),
-                "deploys": [
-                    {
-                        "user": d.who,
-                        "completion": float(d.completion) / d.host_count,
-                    } for d in salon.deploys.itervalues()
-                ],
-                "hold": salon.current_hold,
-                "queue": salon.queue,
-                "status": salon.current_time_status(),
-            })
+            for salon in self.salons.itervalues():
+                data.append({
+                    "name": salon.name,
+                    "allow_deploys": bool(salon.allow_deploys),
+                    "deploy_hours_start": salon.deploy_hours_start.isoformat(),
+                    "deploy_hours_end": salon.deploy_hours_end.isoformat(),
+                    "timezone": str(salon.tz),
+                    "deploys": [
+                        {
+                            "user": d.who,
+                            "completion": float(d.completion) / d.host_count,
+                        } for d in salon.deploys.itervalues()
+                    ],
+                    "hold": salon.current_hold,
+                    "queue": salon.queue,
+                    "status": salon.current_time_status(),
+                })
 
-        with open("/var/lib/harold/salons.json", "w") as f:
-            json.dump(data, f)
+            with open("/var/lib/harold/salons.json", "w") as f:
+                json.dump(data, f)
+        except Exception as exc:
+            print("Failed to update salons.json")
+            traceback.print_exc()
 
 
 class DeployMonitor(object):
