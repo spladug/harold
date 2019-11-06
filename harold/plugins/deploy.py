@@ -531,7 +531,7 @@ class SalonManager(object):
                     {
                         "user": d.who,
                         "completion": float(d.completion) / d.host_count,
-                    } for d in salon.deploys
+                    } for d in salon.deploys.itervalues()
                 ],
                 "hold": salon.current_hold,
                 "queue": salon.queue,
