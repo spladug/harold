@@ -533,7 +533,7 @@ class SalonManager(object):
                     "deploys": [
                         {
                             "user": d.who,
-                            "completion": float(d.completion) / d.host_count,
+                            "completion": float(d.completion or 0) / d.host_count,
                         } for d in salon.deploys.itervalues()
                     ],
                     "hold": salon.current_hold,
