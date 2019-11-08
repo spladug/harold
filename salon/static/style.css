@@ -41,6 +41,10 @@ header nav ul li:first-child {
   padding-left: 0;
 }
 
+header nav ul .current {
+  font-weight: bold;
+}
+
 main {
   display: flex;
   flex-direction: row;

@@ -13,9 +13,18 @@
 
       <nav>
         <ul>
-          <li><a href="{{ url_for('emoji') }}">what do all these emoji mean?</a>
-          <li><a href="{{ url_for('overview') }}">see all pull requests</a>
-          <li><a href="{{ url_for('salons') }}">see all deploy salons</a>
+          {% macro nav_link(route, text) %}
+          {% if request.endpoint != route %}
+          <li><a href="{{ url_for(route) }}">{{ text }}</a>
+          {% else %}
+          <li class="current">{{ text }}</li>
+          {% endif %}
+          </li>
+          {% endmacro %}
+
+          {{ nav_link('emoji', 'what do all these emoji mean?') }}
+          {{ nav_link('overview', 'see all pull requests') }}
+          {{ nav_link('salons', 'see all deploy salons') }}
         </ul>
       </nav>
     </header>
