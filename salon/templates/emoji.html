@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="text">
+<p class="error"><strong>Please use GitHub's native review UI whenever
+possible.</strong> It's much easier to understand and works with non-Harold
+tools (like GitHub itself).</p>
+
+<p>Harold implements the entirely made up Code Salon Review Method™. This
+consists of a few emoji that are used to indicate states of the review process.
+Those emoji are, in roughly the order they'd be seen in review:</p>
+
+<dl>
+  <dt>{{ emoji["eyeglasses"] }} (<code>:eyeglasses:</code>)</dt>
+  <dd>
+    <p>Followed by a list of @github-username mentions, this means "[mentioned
+    users] please review this pull request".</p>
+
+    <p>This is for initial review requests, not pinging people to come back like
+    <code>:haircut:</code>.</p>
+
+    <p><i>Used by authors, but also reviewers when they want to summon other
+      people.</i></p>
+  </dd>
+
+  <dt>{{ emoji["nail_care"] }} (<code>:nail_care:</code>)</dt>
+  <dd>
+    <p>This means "I've finished my review pass and am awaiting your
+    responses."</p>
+
+    <p><i>Used by reviewers.</i></p>
+  </dd>
+
+  <dt>{{ emoji["haircut"] }} (<code>:haircut:</code>)</dt>
+  <dd>
+    <p>This means "I've responded or made appropriate changes and am ready for
+    further review."</p>
+
+    <p>This doesn't accept usernames like <code>:eyeglasses:</code>, it just
+    pings everyone who has reviewed so far. Use the GitHub review UI if you
+    want to be more granular.</p>
+
+    <p><i>Used by authors.</i></p>
+  </dd>
+
+  <dt>{{ emoji["fish"] }} (<code>:fish:</code>)</dt>
+  <dd>
+    <p>This means "I think this pull request is ready for merge."</p>
+
+    <p>It's also OK to use this if the pull request is nearly ready to unblock
+    the author when they make some final touchups.</p>
+
+    <p><i>Used by reviewers.</i></p>
+  </dd>
+
+  <dt>{{ emoji["running"] }} (<code>:running:</code>)</dt>
+  <dd>
+    <p>This means "I don't have time to review this at the moment, please find
+    someone else."</p>
+
+    <p>Do this to be clear to authors that you aren't blocking their progress.
+    But remember that code review is important and your input is helpful.</p>
+
+    <p><i>Used by reviewers.</i></p>
+  </dd>
+
+  <dt>{{ emoji["no_bell"] }} (<code>:no_bell:</code>)</dt>
+  <dd>
+    <p>When prefixing a comment, this means "This is just a comment and
+    requires no action."</p>
+
+    <p><i>Used by reviewers.</i></p>
+  </dd>
+</dl>
+</section>
+{% endblock %}

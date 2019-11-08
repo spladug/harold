@@ -49,6 +49,7 @@ def inject_descriptions():
             "unreviewed": u"🙈",
             "eyeglasses": u"👓",
             "running": u"🏃",
+            "no_bell": u"🔕",
         },
 
         "review_deadline": 1,
@@ -121,3 +122,8 @@ def salons():
         "salons.html",
         salons=salons,
     )
+
+
+@app.route("/emoji")
+def emoji():
+    return render_template("emoji.html")

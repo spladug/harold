@@ -76,11 +76,6 @@ tr:nth-child(even) {
   background: #f0f0f0;
 }
 
-td.error {
-  color: #400;
-  background-color: #fcc;
-}
-
 .listing details {
   padding-left: 25px;
 }
@@ -175,3 +170,28 @@ td.error {
   color: #666;
 }
 
+.error {
+  color: #400;
+  background-color: #fcc;
+}
+
+p.error {
+  padding: 1em;
+}
+
+section.text {
+  max-width: 60em;
+}
+
+code {
+  background-color: #ddd;
+}
+
+dt {
+  font-size: 1.25em;
+  margin-top: 2em;
+}
+
+dd {
+  margin-top: 1em;
+}
