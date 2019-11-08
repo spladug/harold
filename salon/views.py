@@ -8,6 +8,7 @@ import re
 from flask import render_template, request, g
 
 from salon.app import app
+from salon.metrics import load_metrics
 from salon.models import db, PullRequest, EmailAddress
 
 
@@ -57,6 +58,24 @@ def inject_descriptions():
     }
 
 
+TIME_UNITS = [
+    ("d", 24 * 60 * 60),
+    ("h", 60 * 60),
+    ("m", 60),
+    ("s", 1),
+]
+
+
+@app.template_filter()
+def timespan(seconds):
+    parts = []
+    for suffix, divisor in TIME_UNITS:
+        unit, seconds = divmod(seconds, divisor)
+        if unit:
+            parts.append("%d%s" % (unit, suffix))
+    return "".join(parts[:2])
+
+
 @app.route("/")
 @app.route("/user/<override_username>")
 def salon(override_username=None):
@@ -74,12 +93,15 @@ def salon(override_username=None):
         stage = pull_request.review_stage()
         my_pulls[stage].append(pull_request)
 
+    metrics = load_metrics()
+
     return render_template(
         "home.html",
         username=username,
         username_overridden=bool(override_username),
         my_pulls=my_pulls,
         to_review=to_review,
+        metrics=metrics["user"].get(username.lower(), {"counters": {}, "timers": {}}),
     )
 
 
@@ -97,9 +119,11 @@ def overview():
         stage = pull_request.review_stage()
         pull_requests[stage].append(pull_request)
 
+    metrics = load_metrics()
     return render_template(
         "overview.html",
         pull_requests=pull_requests,
+        metrics=metrics["repository"]["*"],
     )
 
 
@@ -110,7 +134,13 @@ def repo(repo_name):
         stage = pull_request.review_stage()
         pull_requests[stage].append(pull_request)
 
-    return render_template("repo.html", repo_name=repo_name, pull_requests=pull_requests)
+    metrics = load_metrics()
+    return render_template(
+        "repo.html",
+        repo_name=repo_name,
+        pull_requests=pull_requests,
+        metrics=metrics["repository"].get(repo_name.lower(), {"counters": {}, "timers": {}}),
+    )
 
 
 @app.route("/salons")
@@ -127,3 +157,39 @@ def salons():
 @app.route("/emoji")
 def emoji():
     return render_template("emoji.html")
+
+
+@app.route("/stats")
+def stats():
+    limit = int(request.args.get("limit", "10"))
+
+    metrics = load_metrics()
+
+    by_repo = collections.defaultdict(lambda: collections.defaultdict(dict))
+    for repo_name, metric_kinds in metrics["repository"].items():
+        if repo_name == "*":
+            continue
+
+        for counter_name, counter_value in metric_kinds.get("counters", {}).items():
+            by_repo["counters"][counter_name][repo_name] = counter_value
+
+        for timer_name, timer_value in metric_kinds.get("timers", {}).items():
+            by_repo["timers"][timer_name][repo_name] = timer_value
+
+    by_user = collections.defaultdict(lambda: collections.defaultdict(dict))
+    for user_name, metric_kinds in metrics["user"].items():
+        if user_name == "*":
+            continue
+
+        for counter_name, counter_value in metric_kinds.get("counters", {}).items():
+            by_user["counters"][counter_name][user_name] = counter_value
+
+        for timer_name, timer_value in metric_kinds.get("timers", {}).items():
+            by_user["timers"][timer_name][user_name] = timer_value
+
+    return render_template(
+        "stats.html",
+        by_repo=by_repo,
+        by_user=by_user,
+        limit=limit,
+    )

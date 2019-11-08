@@ -6,6 +6,9 @@ from flask import Flask
 app = Flask(__name__)
 
 
+app.jinja_options = {"extensions": ["jinja2.ext.loopcontrols"]}
+
+
 # load the rest of the config from the salon config file
 # - flask sessions should be configured (at minimum SECRET_KEY should be set)
 # - github hostname to use (for github enterprise support)

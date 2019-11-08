@@ -8,6 +8,16 @@
     {% else %}
     <h2>@{{username}} needs to review</h2>
     {% endif %}
+
+    <ul class="statistics">
+      <li><span class="metric">{{ metrics.counters.review | default("0") }}</span> reviews in the past {{ metrics_horizon }} days
+      {% if metrics.timers.review %}
+      <li><span class="metric {% if metrics.timers.review > review_deadline*86400 %}tooslow{% endif %}"
+                title="try to keep this under {{ review_deadline }} business day{% if review_deadline > 1: %}s{%endif%}">
+        {{ metrics.timers.review | timespan }}</span> <abbr title="90th percentile">p90</abbr> response time
+      {% endif %}
+    </ul>
+
     {% for state, blocker in [("haircut", True), ("unreviewed", True), ("nail_care", False), ("fish", False)]: %}
     <details {{ "open" if blocker or not to_review[state] else "" }}>
       <summary>
@@ -41,6 +51,15 @@
     {% else %}
     <h2>@{{username}}'s pull requests</h2>
     {% endif %}
+
+    <ul class="statistics">
+      <li><span class="metric">{{ metrics.counters.opened | default("0") }}</span> opened in the past {{ metrics_horizon }} days
+      {% if metrics.timers.open %}
+      <li><span class="metric {% if metrics.timers.open > merge_deadline*86400 %}tooslow{% endif %}"
+                title="try to keep this under {{ merge_deadline }} business days">
+        {{ metrics.timers.open | timespan }}</span> <abbr title="90th percentile">p90</abbr> age
+      {% endif %}
+    </ul>
 
     {% for state in ["fish", "eyeglasses", "nail_care", "unreviewed", "haircut"]: %}
     <details open>

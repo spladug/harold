@@ -164,7 +164,7 @@ class Event(db.Model):
     timestamp = db.Column(db.DateTime, nullable=False)
     repository = db.Column(db.String, nullable=False)
     pull_request_id = db.Column(db.Integer, nullable=False)
-    info = db.Column(db.String, nullable=True)
+    info = db.Column(db.JSON, nullable=False)
 
 
 db.create_all()

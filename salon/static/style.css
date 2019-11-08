@@ -59,7 +59,7 @@ main {
   margin-bottom: 2em;
 }
 
-.listing h2, table thead th {
+.listing h2, table thead th, table caption {
   background: #666;
   color: white;
   font-variant: small-caps;
@@ -167,7 +167,7 @@ tr:nth-child(even) {
 }
 
 .tooslow {
-  color: red;
+  color: red !important;
   font-weight: bold;
 }
 
@@ -199,4 +199,59 @@ dt {
 
 dd {
   margin-top: 1em;
+}
+
+.statistics {
+    padding: .5em 0 0 0;
+}
+
+.statistics li {
+    display: inline-block;
+    border-left: 1px solid #ccc;
+    padding: 0 1em;
+    color: #666;
+}
+
+.statistics li:first-child {
+    border-left: none;
+    margin-left: 25px;
+    padding-left: 0;
+}
+
+.statistics .metric {
+    font-size: 1.4em;
+    color: black;
+}
+
+.leaderboards {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.leaderboards h2 {
+    width: 100%;
+}
+
+.leaderboard {
+    width: 100%;
+    margin-bottom: 2em;
+}
+
+.leaderboard tr th:first-child {
+    width: 1em;
+}
+
+@media (min-width: 600px) {
+    .leaderboard {
+        width: 49%;
+    }
+}
+
+@media (min-width: 1200px) {
+    .leaderboard {
+        width: 33%;
+    }
 }

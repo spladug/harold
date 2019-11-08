@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% import "utils.html" as utils %}
+
+{% macro counter(title, url_base, data, reverse=True, n=limit) %}
+  <table class="leaderboard">
+    <caption>{{ title }}</caption>
+    <tbody>
+      {% for key, value in data | dictsort(by="value", reverse=reverse) %}
+      {%- if loop.index > n %}{% break %}{% endif %}
+      <tr>
+        <th scope="row">{{ loop.index }}</th>
+        <th scope="row"><a href="{{ url_base }}/{{ key }}" target="_self">{{ key }}</a></th>
+        <td>{{ value }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% macro timer(title, url_base, data, reverse=True, n=limit, deadline=None) %}
+  <table class="leaderboard">
+    <caption>{{ title }}</caption>
+    <tbody>
+      {% for key, value in data | dictsort(by="value", reverse=reverse) %}
+      {%- if loop.index > n %}{% break %}{% endif %}
+      <tr>
+        <th scope="row">{{ loop.index }}</th>
+        <th scope="row"><a href="{{ url_base }}/{{ key }}" target="_self">{{ key }}</a></th>
+        <td
+          {% if deadline and (value / 86400) > deadline: %}
+          class="tooslow"
+          {% endif %}
+        >{{ value | timespan }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% block content %}
+  <section class="leaderboards">
+    <h2>Repositories</h2>
+
+    {{ counter("most pull requests opened", "/repo", by_repo.counters.opened) }}
+
+    {{ timer("highest p90 pull request age", "/repo", by_repo.timers.open, deadline=merge_deadline) }}
+
+    {{ timer("highest p90 review response time", "/repo", by_repo.timers.review, deadline=review_deadline) }}
+  </section>
+
+  <section class="leaderboards">
+    <h2>People</h2>
+
+    {{ counter("most requested for review", "/user", by_user.counters.review_requested) }}
+
+    {{ counter("most reviews submitted", "/user", by_user.counters.review) }}
+
+    {{ timer("lowest p90 review response time", "/user", by_user.timers.review, reverse=False, deadline=review_deadline) }}
+
+    {{ counter("most review requests declined", "/user", by_user.counters.review_rejected) }}
+
+    {{ timer("highest p90 pull request age", "/user", by_user.timers.open, deadline=merge_deadline) }}
+
+    {{ timer("highest p90 review response time", "/user", by_user.timers.review, deadline=review_deadline) }}
+  </section>
+
+  <p><a href="{{ url_for('stats', limit=50) }}">See more</a></p>
+{% endblock %}
