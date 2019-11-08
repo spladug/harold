@@ -4,11 +4,10 @@
     <title>the salon</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}">
-    <base target="_blank">
   </head>
   <body>
     <header>
-      <h1><a href="/" target="_self">harold's code salon</a></h1>
+      <h1><a href="/">harold's code salon</a></h1>
     </header>
 
     {% block content %}{% endblock %}
@@ -16,9 +15,9 @@
     <footer>
       <nav>
         <ul>
-          <li><a href="https://github.com/spladug/harold/wiki/Code-Salon-Emoji">what do all these emoji mean?</a>
-          <li><a href="/overview" target="_self">see all pull requests</a>
-          <li><a href="/salons" target="_self">see all deploy salons</a>
+          <li><a href="https://github.com/spladug/harold/wiki/Code-Salon-Emoji" target="_blank">what do all these emoji mean?</a>
+          <li><a href="/overview">see all pull requests</a>
+          <li><a href="/salons">see all deploy salons</a>
         </ul>
       </nav>
     </footer>

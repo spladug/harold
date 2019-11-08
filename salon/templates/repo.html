@@ -3,7 +3,7 @@
 
 {% block content %}
   <nav class="banner">
-    You are viewing pull requests in {{ repo_name }}. <a href="/" target="_self">Go back to your salon.</a>
+    You are viewing pull requests in {{ repo_name }}. <a href="/">Go back to your salon.</a>
   </nav>
 
   <section class="listing">
@@ -17,7 +17,7 @@
       <div class="pull-request">
         <ul class="review-states">
           {% for user, state in pull_request.current_states().iteritems(): %}
-            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}" target="_self">:{{ state.state }}:</a></li>
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">:{{ state.state }}:</a></li>
           {% endfor %}
         </ul>
 
@@ -26,7 +26,7 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.created, merge_deadline) }}
           &middot;
-          <a href="/user/{{ pull_request.author }}" target="_self">@{{ pull_request.author }}</a>
+          <a href="/user/{{ pull_request.author }}">@{{ pull_request.author }}</a>
           &middot;
           #{{ pull_request.id }}
         </p>
@@ -50,7 +50,7 @@
       <div class="pull-request">
         <ul class="review-states">
           {% for user, state in pull_request.current_states().iteritems(): %}
-            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}" target="_self">:{{ state.state }}:</a></li>
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">:{{ state.state }}:</a></li>
           {% endfor %}
         </ul>
 
@@ -59,7 +59,7 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.created, None) }}
           &middot;
-          <a href="/user/{{ pull_request.author }}" target="_self">@{{ pull_request.author }}</a>
+          <a href="/user/{{ pull_request.author }}">@{{ pull_request.author }}</a>
           &middot;
           #{{ pull_request.id }}
         </p>

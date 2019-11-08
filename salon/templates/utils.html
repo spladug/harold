@@ -1,6 +1,6 @@
 {% macro truncated_title(title, url) -%}
   {% if url: %}
-  <a href="{{ url }}" title="{{ title }}">
+  <a href="{{ url }}" title="{{ title }}" target="_blank">
   {% endif %}
   {% if title|length > 70: %}
   {{ title[:70] }}&hellip;
