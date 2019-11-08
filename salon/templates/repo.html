@@ -3,7 +3,7 @@
 
 {% block content %}
   <section class="listing">
-    <h2>waiting for author</h2>
+    <h2>{{ repo_name }} pull requests waiting for author</h2>
     {% for state in ["fish", "eyeglasses", "nail_care"]: %}
     <details open>
       <summary>
@@ -35,7 +35,7 @@
   </section>
 
   <section class="listing">
-    <h2>waiting for reviewers</h2>
+    <h2>{{ repo_name }} pull requests waiting for reviewers</h2>
 
   {% for state in ["haircut", "unreviewed"]: %}
     <details open>
