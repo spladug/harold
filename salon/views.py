@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import collections
 import datetime
 import json
@@ -38,6 +40,15 @@ def inject_descriptions():
             "unreviewed": "not reviewed yet",
             "running": "unable to review",
             "eyeglasses": "awaiting reviewer summoning",
+        },
+
+        "emoji": {
+            "fish": u"🐟",
+            "haircut": u"💇",
+            "nail_care": u"💅",
+            "unreviewed": u"🙈",
+            "eyeglasses": u"👓",
+            "running": u"🏃",
         },
 
         "review_deadline": 1,

@@ -2,12 +2,6 @@
 {% import "utils.html" as utils %}
 
 {% block content %}
-  {% if username_overridden: %}
-  <nav class="banner">
-    You are viewing @{{username}}'s salon. <a href="/">Go back to your salon.</a>
-  </nav>
-  {% endif %}
-
   <section class="listing">
     {% if not username_overridden: %}
     <h2>to review (<abbr title="as soon as possible">asap</abbr>, within one business day)</h2>
@@ -58,7 +52,7 @@
         <ul class="review-states">
           {% for user, state in pull_request.current_states().iteritems(): %}
             {% if user != pull_request.author or state.state != "unreviewed": %}
-            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">:{{ state.state }}:</a></li>
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">{{ emoji[state.state] }}</a></li>
             {% endif %}
           {% endfor %}
         </ul>

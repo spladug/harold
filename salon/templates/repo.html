@@ -2,10 +2,6 @@
 {% import "utils.html" as utils %}
 
 {% block content %}
-  <nav class="banner">
-    You are viewing pull requests in {{ repo_name }}. <a href="/">Go back to your salon.</a>
-  </nav>
-
   <section class="listing">
     <h2>waiting for author</h2>
     {% for state in ["fish", "eyeglasses", "nail_care"]: %}
@@ -17,7 +13,7 @@
       <div class="pull-request">
         <ul class="review-states">
           {% for user, state in pull_request.current_states().iteritems(): %}
-            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">:{{ state.state }}:</a></li>
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">{{ emoji[state.state] }}</a></li>
           {% endfor %}
         </ul>
 
@@ -50,7 +46,7 @@
       <div class="pull-request">
         <ul class="review-states">
           {% for user, state in pull_request.current_states().iteritems(): %}
-            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">:{{ state.state }}:</a></li>
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">{{ emoji[state.state] }}</a></li>
           {% endfor %}
         </ul>
 

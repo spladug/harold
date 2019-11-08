@@ -1,222 +1,177 @@
-body {
-    font-family: monospace;
-    position: absolute;
-    margin: 0 8px;
-}
-
 @font-face {
-    font-family: "Alex Brush";
-    src: url(AlexBrush-Regular.ttf);
+  font-family: "Alex Brush";
+  src: url(AlexBrush-Regular.ttf);
 }
 
-.state-fish { background-image: url(images/fish.png); }
-.state-haircut { background-image: url(images/haircut.png); }
-.state-nail_care { background-image: url(images/nail_care.png); }
-.state-unreviewed { background-image: url(images/see_no_evil.png); }
-.state-eyeglasses { background-image: url(images/eyeglasses.png); }
-.state-running { background-image: url(images/running.png); }
+html {
+  box-sizing: border-box;
+  font-family: monospace;
+}
+
+*, *:before, *:after {
+  box-sizing: inherit;
+}
 
 h1 {
-    font-family: "Alex Brush";
-    font-size: 500%;
-    margin: .2em 0 0 0;
-
-    color: hotpink;
-    padding: 10px 20px 0 0;
+  color: hotpink;
+  font-family: "Alex Brush";
+  font-size: 500%;
+  margin: 0;
 }
 
 h1 a {
-    color: inherit;
-    text-decoration: none;
+  color: inherit;
+  text-decoration: none;
 }
 
-.username {
-    margin: 0 0 1.5em 0;
+header nav ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+header nav ul li {
+  border-left: 1px solid #ccc;
+  display: inline-block;
+  padding: 0 1em;
+}
+
+header nav ul li:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+main {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  max-width: 110em;
+  justify-content: space-between;
+  margin-top: 3em;
 }
 
 .listing {
-    max-width: 600px;
-    padding: 6px;
-    margin: 0 10px 2em 0;
-    float: left;
+  min-width: 54.5em;
 }
 
-@media (min-width: 600px) {
-    .listing {
-        width: 600px;
-    }
+.listing h2, table thead th {
+  background: #666;
+  color: white;
+  font-variant: small-caps;
+  padding: .5em 2em .5em 25px;
+  margin-top: 0;
+  font-size: 1.5em;
 }
 
-h2 {
-    margin: -6px;
-    padding: 6px 32px 6px 32px;
-    color: white;
-    background: #666;
-    font-variant: small-caps;
+th, td {
+  text-align: left;
+  padding: 1em 2em;
 }
 
-h3 {
-    padding: .5em 0 .5em 25px;
-    font-size: large;
-    background-position: left center;
-    background-size: 20px 20px;
-    background-repeat: no-repeat;
-    margin: 0;
+th[scope="row"], td {
+  font-weight: normal;
 }
 
-h4 {
-    font-weight: normal;
-    font-size: medium;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
+tr:nth-child(even) {
+  background: #f0f0f0;
 }
 
-.pull-request, .nada {
-    max-width: 572px;
-    padding: 3px 3px 3px 5px;
-    margin-left: 20px;
+td.error {
+  color: #400;
+  background-color: #fcc;
 }
+
+.listing details {
+  padding-left: 25px;
+}
+
+.listing summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.listing summary::-webkit-details-marker {
+  display: none;
+}
+
+.listing details:not([open]) {
+  color: #666;
+  filter: grayscale(100%);
+}
+
+.listing details:not([open]) summary::after {
+  display: block;
+  content: "click to expand";
+}
+
+.listing details[open] .count {
+  display: none;
+}
+
+.listing h3 {
+  margin: 1.5em 0 1.5em 0;
+}
+
+.listing h3::before {
+  position: absolute;
+  margin-left: -25px;
+  font-size: 125%;
+}
+
+.listing h3.state-fish::before { content: "🐟"; }
+.listing h3.state-haircut::before { content: "💇"; }
+.listing h3.state-nail_care::before { content: "💅"; }
+.listing h3.state-unreviewed::before { content: "🙈"; }
+.listing h3.state-eyeglasses::before { content: "👓"; }
+.listing h3.state-running::before { content: "🏃"; }
 
 .pull-request {
-    margin-top: 5px;
-    border-top: 1px solid #ccc;
+  border-top: 1px solid #ccc;
+  margin-top: .25em;
+  padding: .5em 0;
 }
 
-h3 + .pull-request {
-    margin-top: 0;
-    border-top-width: 0;
+.pull-request:first-of-type {
+  border-top: none;
 }
 
-.tagline {
-    color: #666;
-    margin: 0;
+.pull-request h4 {
+  font-weight: normal;
+  margin: 0 0 0 0;
 }
 
-.tagline a,
-.tagline a:visited {
-    color: inherit;
-    text-decoration: none;
+.pull-request .tagline {
+  color: #666;
+  margin: 0;
 }
 
-.tagline a:hover {
-    text-decoration: underline;
+.pull-request .tagline a {
+  color: #666;
+  text-decoration: none;
 }
 
-.nada {
-    color: #666;
+.pull-request .review-states {
+  float: right;
+  list-style: none;
+  margin: 0;
 }
 
-.state {
-    display: block;
-    width: 20px;
-    height: 20px;
-    text-indent: -9999px;
-    background-size: 20px 20px;
-    background-repeat: no-repeat;
-    background-position: center center;
+.pull-request .review-states li {
+  display: inline-block;
+  margin: 0 0 0 .25em;
 }
 
-.state a {
-    display: block;
-}
-
-ul.review-states {
-    margin: 0;
-    padding: 0;
-    float: right;
-}
-
-ul.review-states li {
-    display: inline-block;
-}
-
-.modal {
-    width: 600px;
-    border: 1px solid #ccc;
-    background: #eee;
-    padding: 6px;
-}
-
-.modal h2 {
-    color: black;
-    background: transparent;
-    margin: 0;
-    padding: 0;
-}
-
-.modal.error {
-    border: 1px solid #fbb;
-    background: #fdd;
-}
-
-details:not([open]) {
-    color: #666;
-    filter: grayscale(100%);
-}
-
-details:not([open]) summary::after {
-    display: block;
-    content: "click to expand";
-    color: #666;
-    margin-left: 25px;
-}
-
-details[open] summary .count {
-    display: none;
-}
-
-summary {
-    list-style: none;
-    margin: 1.5em 0 0 0;
-    cursor: pointer;
-}
-
-summary::-webkit-details-marker {
-    display: none;
-}
-
-abbr {
-    text-decoration: none;
+.pull-request .review-states a {
+  font-size: 125%;
+  text-decoration: none;
 }
 
 .tooslow {
-    color: red;
-    font-weight: bold;
+  color: red;
+  font-weight: bold;
 }
 
-nav.banner {
-    background: #ffc356;
-    margin: 0 0 1em 0;
-    padding: 9px;
-    max-width: 594px;
+.nada {
+  color: #666;
 }
 
-.toolbox {
-    position: absolute;
-    top: 70px;
-    right: 10px;
-    padding: .7em;
-}
-
-footer {
-    clear: both;
-    border-top: 1px solid #ccc;
-    padding-top: 1em;
-    margin-bottom: 2em;
-}
-
-footer ul {
-    list-style-type: none;
-    padding: 0;
-}
-
-footer ul li {
-    display: inline-block;
-    border-left: 1px solid #ccc;
-    padding: 0 1em;
-}
-
-footer ul li:first-child {
-    border-left: none;
-}
