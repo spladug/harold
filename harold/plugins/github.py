@@ -232,6 +232,13 @@ class SalonDatabase(object):
             })
             returnValue(True)
         except self.database.module.IntegrityError:
+            yield self._upsert("github_review_states", {
+                "repository": repo,
+                "pull_request_id": pull_request_id,
+                "user": username,
+                "timestamp": timestamp,
+                "state": "haircut",
+            })
             returnValue(False)
 
     @inlineCallbacks
@@ -348,10 +355,6 @@ class Salon(object):
                 message = self.messages_by_emoji[":eyeglasses:"]
             else:
                 message = self.messages_by_emoji[":haircut:"]
-
-                yield self.database.update_review_state(
-                    repository_name, pull_request_id, "",
-                    timestamp, parsed["sender"]["login"], ":haircut:")
 
             reviewer = yield self.salons.get_nick_for_user(username)
 

@@ -31,7 +31,7 @@ class PullRequest(db.Model):
         haircut_time = None
         states_by_user = collections.OrderedDict()
         for state in self.states:
-            if state.state == "haircut":
+            if state.user == self.author and state.state == "haircut":
                 haircut_time = state.timestamp
                 continue
 
