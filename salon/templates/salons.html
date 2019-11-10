@@ -7,8 +7,8 @@
     <th scope="col">name</th>
     <th scope="col">status</th>
     <th scope="col">conch</th>
-    <th scope="col">queue</th>
     <th scope="col">deploy</th>
+    <th scope="col">queue</th>
   </thead>
   <tbody>
     {% for salon in salons | selectattr("allow_deploys") | sort(attribute="name") %}
@@ -30,14 +30,14 @@
 
       <td>{{ salon["queue"] | first }}
       <td>
-        {% if salon["queue"] %}
-        {{ salon["queue"] | length - 1 }} more
-        {% endif %}
-      <td>
         {% if salon["deploys"] | length > 1 %}
         multiple deploys ongoing
         {% elif salon["deploys"] | length == 1: %}
         {{ salon["deploys"][0]["user"] }} is {{ (salon["deploys"][0]["completion"] * 100) | int }}% done deploying
+        {% endif %}
+      <td>
+        {% if salon["queue"] %}
+        {{ salon["queue"] | length - 1 }} more
         {% endif %}
     </tr>
     {% endfor %}
