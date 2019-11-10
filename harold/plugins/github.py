@@ -174,7 +174,7 @@ class SalonDatabase(object):
         returnValue(bool(rows[0][0]))
 
     @inlineCallbacks
-    def process_pullrequest(self, pull_request, repository):
+    def process_pullrequest(self, sender, pull_request, repository):
         repo = repository or pull_request["repository"]["full_name"]
         id = int(pull_request["number"])
 
@@ -188,23 +188,33 @@ class SalonDatabase(object):
             "title": pull_request["title"],
             "url": pull_request["html_url"],
         })
-        yield self._add_mentions(repo, id, pull_request["body"], timestamp)
+        yield self._add_mentions(sender, repo, id, pull_request["body"], timestamp)
 
     @inlineCallbacks
     def update_review_state(self, repo, pr_id, body, timestamp, user, emoji):
         is_author = yield self._is_author(repo, pr_id, user)
         if is_author:
-            yield self._add_mentions(repo, pr_id, body, timestamp)
+            yield self._add_mentions(user, repo, pr_id, body, timestamp)
 
         state = "unreviewed"
+        event_name = None
         if is_author and emoji == ":haircut:":
             state = "haircut"
+            event_name = "review_requested"
+            targets = yield self.get_reviewers(repo, pr_id)
+            event_info = {"targets": targets}
         elif emoji == ":running:":
             state = "running"
+            event_name = "review_request_removed"
+            event_info = {"targets": [user]}
         elif emoji == ":nail_care:":
             state = "nail_care"
+            event_name = "review"
+            event_info = {"state": "CHANGES_REQUESTED"}
         elif emoji == ":fish:":
             state = "fish"
+            event_name = "review"
+            event_info = {"state": "APPROVED"}
 
         should_overwrite = (state != "unreviewed")
 
@@ -220,8 +230,18 @@ class SalonDatabase(object):
             if should_overwrite:
                 raise
 
+        if event_name:
+            yield self.emit_event(
+                actor=user,
+                event=event_name,
+                repository=repo,
+                pull_request_id=pr_id,
+                timestamp=timestamp,
+                **event_info
+            )
+
     @inlineCallbacks
-    def add_review_request(self, repo, pull_request_id, username, timestamp):
+    def add_review_request(self, sender, repo, pull_request_id, username, timestamp):
         try:
             yield self._insert("github_review_states", {
                 "repository": repo,
@@ -230,16 +250,38 @@ class SalonDatabase(object):
                 "timestamp": timestamp,
                 "state": "unreviewed",
             })
-            returnValue(True)
+            is_new = True
+            did_haircut = False
         except self.database.module.IntegrityError:
-            yield self._upsert("github_review_states", {
-                "repository": repo,
-                "pull_request_id": pull_request_id,
-                "user": username,
-                "timestamp": timestamp,
-                "state": "haircut",
-            })
-            returnValue(False)
+            def maybe_haircut(transaction):
+                transaction.execute(
+                    "UPDATE github_review_states SET state = 'haircut', timestamp = :timestamp "
+                        "WHERE repository = :repo AND "
+                        "   pull_request_id = :prid AND "
+                        "   user = :user AND "
+                        "   state != 'unreviewed';",
+                    {
+                        "repo": repo,
+                        "prid": pull_request_id,
+                        "user": username,
+                        "timestamp": timestamp,
+                    },
+                )
+                return transaction.rowcount > 0
+            is_new = False
+            did_haircut = yield self.database.runInteraction(maybe_haircut)
+
+        if is_new or did_haircut:
+            yield self.emit_event(
+                actor=sender,
+                event="review_requested",
+                repository=repo,
+                pull_request_id=pull_request_id,
+                timestamp=timestamp,
+                targets=[username],
+            )
+
+        returnValue(is_new)
 
     @inlineCallbacks
     def remove_review_request(self, repo, pull_request_id, username):
@@ -250,9 +292,9 @@ class SalonDatabase(object):
         })
 
     @inlineCallbacks
-    def _add_mentions(self, repo, id, body, timestamp):
+    def _add_mentions(self, sender, repo, id, body, timestamp):
         for mention in _extract_reviewers(body):
-            yield self.add_review_request(repo, id, mention, timestamp)
+            yield self.add_review_request(sender, repo, id, mention, timestamp)
 
     @inlineCallbacks
     def get_reviewers(self, repo, pr_id):
@@ -272,6 +314,17 @@ class SalonDatabase(object):
         )
 
         returnValue([reviewer for reviewer, in rows])
+
+    @inlineCallbacks
+    def emit_event(self, actor, event, repository, pull_request_id, timestamp=None, **kwargs):
+        yield self._insert("events", {
+            "actor": actor,
+            "event": event,
+            "timestamp": timestamp or datetime.datetime.utcnow(),
+            "repository": repository,
+            "pull_request_id": pull_request_id,
+            "info": json.dumps(kwargs),
+        })
 
 
 class Salon(object):
@@ -328,9 +381,19 @@ class Salon(object):
         repository_name = parsed["repository"]["full_name"]
         repository = yield self.salons.get_repository(repository_name)
         pull_request_id = parsed["number"]
-        sender = yield self.salons.get_nick_for_user(parsed["sender"]["login"])
+        sender_username = parsed["sender"]["login"]
+        sender = yield self.salons.get_nick_for_user(sender_username)
 
-        yield self.database.process_pullrequest(pull_request, repository_name)
+        if parsed["action"] == "opened":
+            yield self.database.emit_event(
+                actor=sender_username,
+                event="opened",
+                repository=repository_name,
+                pull_request_id=pull_request_id,
+                timestamp=timestamp,
+            )
+
+        yield self.database.process_pullrequest(sender_username, pull_request, repository_name)
 
         html_link = pull_request["_links"]["html"]["href"]
         short_url = yield self.shortener.make_short_url(html_link)
@@ -345,6 +408,7 @@ class Salon(object):
 
             username = parsed["requested_reviewer"]["login"]
             is_new_request = yield self.database.add_review_request(
+                sender=sender_username,
                 repo=repository_name,
                 pull_request_id=pull_request_id,
                 username=username,
@@ -374,6 +438,14 @@ class Salon(object):
                 pull_request_id=pull_request_id,
                 username=username,
             )
+
+            yield self.database.emit_event(
+                actor=sender_username,
+                event="review_request_removed",
+                repository=repository_name,
+                pull_request_id=pull_request_id,
+                targets=[username],
+            )
         elif parsed["action"] == "opened":
             message = ("%(user)s opened pull request #%(id)d (%(short_url)s) "
                        "on %(repo)s: %(title)s")
@@ -401,6 +473,20 @@ class Salon(object):
                     "id": pull_request_id,
                     "short_url": short_url,
                 })
+        elif parsed["action"] == "reopened":
+            yield self.database.emit_event(
+                actor=sender_username,
+                event="reopened",
+                repository=repository_name,
+                pull_request_id=pull_request_id,
+            )
+        elif parsed["action"] == "closed":
+            yield self.database.emit_event(
+                actor=sender_username,
+                event="closed",
+                repository=repository_name,
+                pull_request_id=pull_request_id,
+            )
 
     @classmethod
     def rewrite_emoji(cls, text):
@@ -486,6 +572,7 @@ class Salon(object):
         short_url = yield self.shortener.make_short_url(html_link)
         pr_id = int(parsed["pull_request"]["number"])
         timestamp = _parse_timestamp(parsed["review"]["submitted_at"])
+        sender = parsed["sender"]["login"]
 
         emoji_by_state = {
             "approved": ":fish:",
@@ -498,7 +585,7 @@ class Salon(object):
 
         yield self.database.update_review_state(
             repository_name, pr_id, parsed["review"]["body"],
-            timestamp, parsed["sender"]["login"], emoji)
+            timestamp, sender, emoji)
 
         owner = yield self.salons.get_nick_for_user(parsed["pull_request"]["user"]["login"])
         user = yield self.salons.get_nick_for_user(parsed["sender"]["login"])

@@ -155,4 +155,16 @@ class EmailAddress(db.Model):
         return self.email_address.partition("@")[0].lower().replace(".", "-")
 
 
+class Event(db.Model):
+    __tablename__ = "events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    actor = db.Column(db.String, nullable=False)
+    event = db.Column(db.String, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False)
+    repository = db.Column(db.String, nullable=False)
+    pull_request_id = db.Column(db.Integer, nullable=False)
+    info = db.Column(db.String, nullable=True)
+
+
 db.create_all()
