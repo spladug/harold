@@ -188,7 +188,6 @@ class SalonDatabase(object):
             "title": pull_request["title"],
             "url": pull_request["html_url"],
         })
-        yield self._add_mentions(sender, repo, id, pull_request["body"], timestamp)
 
     @inlineCallbacks
     def update_review_state(self, repo, pr_id, body, timestamp, user, emoji):
@@ -391,6 +390,14 @@ class Salon(object):
                 repository=repository_name,
                 pull_request_id=pull_request_id,
                 timestamp=timestamp,
+            )
+
+            yield self.database._add_mentions(
+                sender_username,
+                repository_name,
+                pull_request_id,
+                pull_request["body"],
+                timestamp,
             )
 
         yield self.database.process_pullrequest(sender_username, pull_request, repository_name)
