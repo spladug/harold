@@ -5,6 +5,7 @@ import datetime
 import json
 import re
 
+from baseplate.file_watcher import FileWatcher
 from flask import render_template, request, g
 
 from salon.app import app
@@ -143,14 +144,14 @@ def repo(repo_name):
     )
 
 
+SALON_FILEWATCHER = FileWatcher("/var/lib/harold/salons.json", json.load)
+
+
 @app.route("/salons")
 def salons():
-    with open("/var/lib/harold/salons.json") as f:
-        salons = json.load(f)
-
     return render_template(
         "salons.html",
-        salons=salons,
+        salons=SALON_FILEWATCHER.get_data(),
     )
 
 
