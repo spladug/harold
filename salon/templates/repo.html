@@ -3,7 +3,7 @@
 
 {% block content %}
   <section class="listing">
-    <h2>{{ repo_name }} pull requests waiting for author</h2>
+    <h2>{{ repo_name }} pull requests waiting for reviewers</h2>
 
     <ul class="statistics">
       <li><span class="metric">{{ metrics.counters.review | default("0") }}</span> reviews in the past {{ metrics_horizon }} days
@@ -11,48 +11,6 @@
       <li><span class="metric {% if metrics.timers.review > review_deadline*86400 %}tooslow{% endif %}"
                 title="try to keep this under {{ review_deadline }} business day{% if review_deadline > 1: %}s{%endif%}">
         {{ metrics.timers.review | timespan }}</span> <abbr title="90th percentile">p90</abbr> response time
-      {% endif %}
-    </ul>
-
-    {% for state in ["fish", "eyeglasses", "nail_care"]: %}
-    <details open>
-      <summary>
-        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span>({{ pull_requests[state] | length }})</span></h3>
-      </summary>
-      {% for pull_request in pull_requests[state]: %}
-      <div class="pull-request">
-        <ul class="review-states">
-          {% for user, state in pull_request.current_states().iteritems(): %}
-            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">{{ emoji[state.state] }}</a></li>
-          {% endfor %}
-        </ul>
-
-        <h4>{{ utils.truncated_title(pull_request.title, pull_request.url) }}</h4>
-
-        <p class="tagline">
-          {{ utils.timestamp(pull_request.created, merge_deadline) }}
-          &middot;
-          <a href="/user/{{ pull_request.author }}">@{{ pull_request.author }}</a>
-          &middot;
-          #{{ pull_request.id }}
-        </p>
-      </div>
-      {% else %}
-      <p class="nada" lang="es">nada</p>
-      {% endfor %}
-      </details>
-    {% endfor %}
-  </section>
-
-  <section class="listing">
-    <h2>{{ repo_name }} pull requests waiting for reviewers</h2>
-
-    <ul class="statistics">
-      <li><span class="metric">{{ metrics.counters.opened | default("0") }}</span> opened in the past {{ metrics_horizon }} days
-      {% if metrics.timers.open %}
-      <li><span class="metric {% if metrics.timers.open > merge_deadline*86400 %}tooslow{% endif %}"
-                title="try to keep this under {{ merge_deadline }} business days">
-        {{ metrics.timers.open | timespan }}</span> <abbr title="90th percentile">p90</abbr> age
       {% endif %}
     </ul>
 
@@ -83,6 +41,48 @@
       <p class="nada" lang="es">nada</p>
       {% endfor %}
     </details>
+    {% endfor %}
+  </section>
+
+  <section class="listing">
+    <h2>{{ repo_name }} pull requests waiting for author</h2>
+
+    <ul class="statistics">
+      <li><span class="metric">{{ metrics.counters.opened | default("0") }}</span> opened in the past {{ metrics_horizon }} days
+      {% if metrics.timers.open %}
+      <li><span class="metric {% if metrics.timers.open > merge_deadline*86400 %}tooslow{% endif %}"
+                title="try to keep this under {{ merge_deadline }} business days">
+        {{ metrics.timers.open | timespan }}</span> <abbr title="90th percentile">p90</abbr> age
+      {% endif %}
+    </ul>
+
+    {% for state in ["fish", "eyeglasses", "nail_care"]: %}
+    <details open>
+      <summary>
+        <h3 class="state-{{ state }}">{{ state_meanings[state] }} <span>({{ pull_requests[state] | length }})</span></h3>
+      </summary>
+      {% for pull_request in pull_requests[state]: %}
+      <div class="pull-request">
+        <ul class="review-states">
+          {% for user, state in pull_request.current_states().iteritems(): %}
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">{{ emoji[state.state] }}</a></li>
+          {% endfor %}
+        </ul>
+
+        <h4>{{ utils.truncated_title(pull_request.title, pull_request.url) }}</h4>
+
+        <p class="tagline">
+          {{ utils.timestamp(pull_request.created, merge_deadline) }}
+          &middot;
+          <a href="/user/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+          &middot;
+          #{{ pull_request.id }}
+        </p>
+      </div>
+      {% else %}
+      <p class="nada" lang="es">nada</p>
+      {% endfor %}
+      </details>
     {% endfor %}
   </section>
 {% endblock %}
