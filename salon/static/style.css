@@ -50,13 +50,20 @@ main {
   flex-direction: row;
   flex-wrap: wrap;
   max-width: 110em;
-  justify-content: space-between;
+  justify-content: left;
   margin-top: 3em;
 }
 
 .listing {
-  min-width: 54.5em;
+  min-width: 40em;
   margin-bottom: 2em;
+  margin-right: 2em;
+}
+
+@media (max-width: 1300px) {
+    .listing {
+        max-width: 550px;
+    }
 }
 
 .listing h2, table thead th, table caption {
