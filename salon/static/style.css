@@ -3,9 +3,75 @@
   src: url(AlexBrush-Regular.ttf);
 }
 
+:root {
+  --text-color: black;
+  --background-color: white;
+  --separator-color: #ccc;
+  --emphasized-text-color: black;
+  --other-text-color: #666;
+  --block-text-color: white;
+  --block-background-color: #666;
+}
+
+.tooslow {
+  color: red !important;
+}
+
+.error {
+  color: #400;
+  background-color: #fcc;
+}
+
+tr:nth-child(even) {
+  background-color: #f0f0f0;
+}
+
+code {
+  background-color: #ddd;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-color: #eee;
+    --background-color: #222;
+    --separator-color: #444;
+    --emphasized-text-color: #eee;
+    --other-text-color: #999;
+    --block-text-color: #eee;
+    --block-background-color: #666;
+  }
+
+  a {
+    color: cornflowerblue;
+  }
+
+  a:visited {
+    color: cornflowerblue;
+  }
+
+  .tooslow {
+    color: #c00 !important;
+  }
+
+  .error {
+    color: #fcc;
+    background-color: #400;
+  }
+
+  tr:nth-child(even) {
+    background-color: #303030;
+  }
+
+  code {
+    background-color: #444;
+  }
+}
+
 html {
   box-sizing: border-box;
   font-family: monospace;
+  color: var(--text-color);
+  background-color: var(--background-color);
 }
 
 *, *:before, *:after {
@@ -19,7 +85,7 @@ h1 {
   margin: 0;
 }
 
-h1 a {
+header h1 a, header h1 a:visited {
   color: inherit;
   text-decoration: none;
 }
@@ -31,7 +97,7 @@ header nav ul {
 }
 
 header nav ul li {
-  border-left: 1px solid #ccc;
+  border-left: 1px solid var(--separator-color);
   display: inline-block;
   padding: 0 1em;
 }
@@ -67,8 +133,8 @@ main {
 }
 
 .listing h2, table thead th, table caption {
-  background: #666;
-  color: white;
+  background: var(--block-background-color);
+  color: var(--block-text-color);
   font-variant: small-caps;
   padding: .5em 2em .5em 25px;
   margin-top: 0;
@@ -82,10 +148,6 @@ th, td {
 
 th[scope="row"], td {
   font-weight: normal;
-}
-
-tr:nth-child(even) {
-  background: #f0f0f0;
 }
 
 .listing details {
@@ -102,7 +164,7 @@ tr:nth-child(even) {
 }
 
 .listing details:not([open]) {
-  color: #666;
+  color: var(--other-text-color);
   filter: grayscale(100%);
 }
 
@@ -133,7 +195,7 @@ tr:nth-child(even) {
 .listing h3.state-running::before { content: "🏃"; }
 
 .pull-request {
-  border-top: 1px solid #ccc;
+  border-top: 1px solid var(--separator-color);
   margin-top: .25em;
   padding: .5em 0;
 }
@@ -148,12 +210,12 @@ tr:nth-child(even) {
 }
 
 .pull-request .tagline {
-  color: #666;
+  color: var(--other-text-color);
   margin: 0;
 }
 
 .pull-request .tagline a {
-  color: #666;
+  color: var(--other-text-color);
   text-decoration: none;
 }
 
@@ -174,18 +236,13 @@ tr:nth-child(even) {
 }
 
 .tooslow {
-  color: red !important;
   font-weight: bold;
 }
 
 .nada {
-  color: #666;
+  color: var(--other-text-color);
 }
 
-.error {
-  color: #400;
-  background-color: #fcc;
-}
 
 p.error {
   padding: 1em;
@@ -193,10 +250,6 @@ p.error {
 
 section.text {
   max-width: 60em;
-}
-
-code {
-  background-color: #ddd;
 }
 
 dt {
@@ -214,9 +267,9 @@ dd {
 
 .statistics li {
     display: inline-block;
-    border-left: 1px solid #ccc;
+    border-left: 1px solid var(--separator-color);
     padding: 0 1em;
-    color: #666;
+    color: var(--other-text-color);
 }
 
 .statistics li:first-child {
@@ -227,7 +280,7 @@ dd {
 
 .statistics .metric {
     font-size: 1.4em;
-    color: black;
+    color: var(--emphasized-text-color);
 }
 
 .leaderboards {
@@ -248,7 +301,7 @@ dd {
 }
 
 .leaderboard tr th:first-child {
-    color: #666;
+    color: var(--other-text-color);
     padding: 1em;
     text-align: center;
     width: 3em;
