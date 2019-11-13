@@ -241,7 +241,10 @@ dd {
 }
 
 .leaderboard tr th:first-child {
-    width: 1em;
+    color: #666;
+    padding: 1em;
+    text-align: center;
+    width: 3em;
 }
 
 @media (min-width: 600px) {
