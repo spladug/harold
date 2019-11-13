@@ -126,9 +126,9 @@ main {
   margin-right: 2em;
 }
 
-@media (max-width: 1300px) {
+@media (max-width: 80em) {
     .listing {
-        max-width: 550px;
+        max-width: 40em;
     }
 }
 
