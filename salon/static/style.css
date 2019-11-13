@@ -115,27 +115,21 @@ main {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  max-width: 110em;
-  justify-content: left;
   margin-top: 3em;
 }
 
 .listing {
-  min-width: 40em;
+  min-width: min-content;
+  max-width: 60em;
   margin-bottom: 2em;
   margin-right: 2em;
-}
-
-@media (max-width: 80em) {
-    .listing {
-        max-width: 40em;
-    }
 }
 
 .listing h2, table thead th, table caption {
   background: var(--block-background-color);
   color: var(--block-text-color);
   font-variant: small-caps;
+  text-transform: lowercase;
   padding: .5em 2em .5em 25px;
   margin-top: 0;
   font-size: 1.5em;
@@ -219,6 +213,10 @@ th[scope="row"], td {
   text-decoration: none;
 }
 
+.pull-request .tagline time, .pull-request .tagline a {
+  white-space: nowrap;
+}
+
 .pull-request .review-states {
   float: right;
   list-style: none;
@@ -287,7 +285,6 @@ dd {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    justify-content: space-between;
     width: 100%;
 }
 
@@ -297,7 +294,9 @@ dd {
 
 .leaderboard {
     width: 100%;
+    max-width: 40em;
     margin-bottom: 2em;
+    margin-right: 2em;
 }
 
 .leaderboard tr th:first-child {
@@ -305,16 +304,4 @@ dd {
     padding: 1em;
     text-align: center;
     width: 3em;
-}
-
-@media (min-width: 600px) {
-    .leaderboard {
-        width: 49%;
-    }
-}
-
-@media (min-width: 1200px) {
-    .leaderboard {
-        width: 33%;
-    }
 }
