@@ -46,6 +46,10 @@
 
     {{ counter("most pull requests opened", "/repo", by_repo.counters.opened) }}
 
+    {{ counter("most reviews requested", "/repo", by_repo.counters.review_requested) }}
+
+    {{ counter("most reviews submitted", "/repo", by_repo.counters.review) }}
+
     {{ timer("highest p90 pull request age", "/repo", by_repo.timers.open, deadline=merge_deadline) }}
 
     {{ timer("highest p90 review response time", "/repo", by_repo.timers.review, deadline=review_deadline) }}
