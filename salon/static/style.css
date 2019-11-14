@@ -171,6 +171,7 @@ main {
 h2 .admonishment {
   font-size: medium;
   font-weight: normal;
+  text-transform: none;
   margin-left: 1em;
 }
 
