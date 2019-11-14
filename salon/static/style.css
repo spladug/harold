@@ -118,13 +118,13 @@ header nav ul .current {
 
 @media (min-width: 320px) {
   h1 {
-    font-size: calc(40px + 80 * ((100vw - 320px) / 680));
+    font-size: calc(40px + 60 * ((100vw - 320px) / 680));
   }
 }
 
 @media (min-width: 1000px) {
   h1 {
-    font-size: 120px;
+    font-size: 100px;
   }
 }
 
