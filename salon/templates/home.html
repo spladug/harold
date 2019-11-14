@@ -4,7 +4,7 @@
 {% block content %}
   <section class="listing">
     {% if not username_overridden: %}
-    <h2>to review (<abbr title="as soon as possible">asap</abbr>, within one business day)</h2>
+    <h2>To Review <span class="admonishment"><abbr title="as soon as possible">ASAP</abbr>, within one business day</span></h2>
     {% else %}
     <h2>@{{username}} needs to review</h2>
     {% endif %}
@@ -47,7 +47,7 @@
 
   <section class="listing">
     {% if not username_overridden: %}
-    <h2>my pull requests (don't let these linger)</h2>
+    <h2>My Pull Requests <span class="admonishment">Don't let these linger</span></h2>
     {% else %}
     <h2>@{{username}}'s pull requests</h2>
     {% endif %}

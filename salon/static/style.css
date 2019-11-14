@@ -165,6 +165,13 @@ main {
   padding: .75em 2em .75em var(--emoji-offset);
   margin-top: 0;
   font-size: large;
+  font-weight: bold;
+}
+
+h2 .admonishment {
+  font-size: medium;
+  font-weight: normal;
+  margin-left: 1em;
 }
 
 .listing h2 abbr {
