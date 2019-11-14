@@ -24,7 +24,7 @@
     <div class="pull-request">
       <ul class="review-states">
         {% for user, state in pull_request.current_states().iteritems(): %}
-        <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">{{ emoji[state.state] }}</a></li>
+        <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="{{ url_for("salon", override_username=user) }}">{{ emoji[state.state] }}</a></li>
         {% endfor %}
       </ul>
 
@@ -33,9 +33,9 @@
       <p class="tagline">
         {{ utils.timestamp(pull_request.created) }}
         &middot;
-        <a href="/user/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+        {{ utils.user_link(pull_request.author) }}
         &middot;
-        <a href="/repo/{{ pull_request.repository }}">{{ pull_request.repository }}</a>#{{ pull_request.id }}
+        {{ utils.repository_link(pull_request.repository) }}#{{ pull_request.id }}
       </p>
     </div>
     {% endfor %}
@@ -65,7 +65,7 @@
     <div class="pull-request">
       <ul class="review-states">
         {% for user, state in pull_request.current_states().iteritems(): %}
-        <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">{{ emoji[state.state] }}</a></li>
+        <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="{{ url_for("salon", override_username=user) }}">{{ emoji[state.state] }}</a></li>
         {% endfor %}
       </ul>
 
@@ -74,9 +74,9 @@
       <p class="tagline">
         {{ utils.timestamp(pull_request.created) }}
         &middot;
-        <a href="/user/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+        {{ utils.user_link(pull_request.author) }}
         &middot;
-        <a href="/repo/{{ pull_request.repository }}">{{ pull_request.repository }}</a>#{{ pull_request.id }}
+        {{ utils.repository_link(pull_request.repository) }}#{{ pull_request.id }}
       </p>
     </div>
     {% endfor %}

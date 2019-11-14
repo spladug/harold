@@ -32,7 +32,7 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.created, None) }}
           &middot;
-          <a href="/user/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+          {{ utils.user_link(pull_request.author) }}
           &middot;
           #{{ pull_request.id }}
         </p>
@@ -74,7 +74,7 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.created, merge_deadline) }}
           &middot;
-          <a href="/user/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+          {{ utils.user_link(pull_request.author) }}
           &middot;
           #{{ pull_request.id }}
         </p>

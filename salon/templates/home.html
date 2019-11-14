@@ -29,9 +29,9 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.state_for_user(username).timestamp, review_deadline if blocker else None) }}
           &middot;
-          <a href="/user/{{ pull_request.author }}">@{{ pull_request.author }}</a>
+          {{ utils.user_link(pull_request.author) }}
           &middot;
-          <a href="/repo/{{ pull_request.repository }}">{{ pull_request.repository }}</a>#{{ pull_request.id }}
+          {{ utils.repository_link(pull_request.repository) }}#{{ pull_request.id }}
         </p>
       </div>
       {% else %}
@@ -71,7 +71,7 @@
         <ul class="review-states">
           {% for user, state in pull_request.current_states().iteritems(): %}
             {% if user != pull_request.author or state.state != "unreviewed": %}
-            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="/user/{{user}}">{{ emoji[state.state] }}</a></li>
+            <li title="@{{ user }}: {{ state_meanings[state.state] }}" class="state state-{{ state.state }}"><a href="{{ url_for("salon", override_username=user) }}">{{ emoji[state.state] }}</a></li>
             {% endif %}
           {% endfor %}
         </ul>
@@ -80,7 +80,7 @@
         <p class="tagline">
           {{ utils.timestamp(pull_request.created, merge_deadline) }}
           &middot;
-          <a href="/repo/{{ pull_request.repository }}">{{ pull_request.repository }}</a>#{{ pull_request.id }}
+          {{ utils.repository_link(pull_request.repository) }}#{{ pull_request.id }}
         </p>
       </div>
       {% else %}
