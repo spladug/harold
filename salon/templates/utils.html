@@ -23,3 +23,11 @@
   {{ ts.strftime("%Y-%m-%d %H:%M") }}
 </time>
 {%- endmacro %}
+
+{% macro repository_link(repo_name) -%}
+<a href="{{ url_for("repo", repo_name=repo_name) }}" class="repository">{{ repo_name }}</a>
+{%- endmacro %}
+
+{% macro user_link(user_name) -%}
+<a href="{{ url_for("salon", override_username=user_name) }}" class="user">@{{ user_name }}</a>
+{%- endmacro %}

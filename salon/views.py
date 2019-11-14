@@ -10,7 +10,7 @@ from flask import render_template, request, g
 
 from salon.app import app
 from salon.metrics import load_metrics
-from salon.models import db, PullRequest, EmailAddress
+from salon.models import db, PullRequest, EmailAddress, Event
 
 
 EMAIL_SANITY_CHECK_RE = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
@@ -193,4 +193,37 @@ def stats():
         by_repo=by_repo,
         by_user=by_user,
         limit=limit,
+    )
+
+
+@app.route("/log")
+def log():
+    before = request.args.get("before")
+    if before:
+        try:
+            before = datetime.datetime.strptime(before, "%Y-%m-%dT%H:%M:%S")
+        except (TypeError, ValueError):
+            before = None
+
+    try:
+        count = int(request.args.get("count"))
+    except (TypeError, ValueError):
+        count = 25
+    count = min(count, 100)
+
+    event_types = request.args.getlist("event_types")
+
+    query = Event.query.order_by(db.desc(Event.timestamp))
+    if before:
+        query = query.filter(Event.timestamp <= before)
+    if event_types:
+        query = query.filter(Event.event.in_(event_types))
+    query = query.limit(count)
+
+    return render_template(
+        "log.html",
+        events=list(query),
+        before=before,
+        count=count,
+        event_types=event_types,
     )

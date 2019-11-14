@@ -351,3 +351,22 @@ dd {
 p, dl {
   max-width: 60em;
 }
+
+.pagination {
+  margin-bottom: 5em;
+}
+
+.pagination ol {
+  list-style-type: none;
+  padding: 0;
+}
+
+.pagination li {
+  display: inline-block;
+  margin-right: 1em;
+}
+
+table .user, table .repository, table .user:visited, table .repository:visited {
+  color: var(--emphasized-text-color);
+  text-decoration: none;
+}
