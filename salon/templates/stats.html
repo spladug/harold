@@ -60,8 +60,6 @@
 
     {{ counter("most reviews submitted", "/user", by_user.counters.review) }}
 
-    {{ timer("lowest p90 review response time", "/user", by_user.timers.review, reverse=False, deadline=review_deadline) }}
-
     {{ timer("highest p90 pull request age", "/user", by_user.timers.open, deadline=merge_deadline) }}
 
     {{ timer("highest p90 review response time", "/user", by_user.timers.review, deadline=review_deadline) }}
