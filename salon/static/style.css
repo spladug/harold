@@ -367,6 +367,5 @@ p, dl {
 }
 
 table .user, table .repository, table .user:visited, table .repository:visited {
-  color: var(--emphasized-text-color);
   text-decoration: none;
 }
