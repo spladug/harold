@@ -34,7 +34,7 @@ code {
 @media (prefers-color-scheme: dark) {
   :root {
     --text-color: #eee;
-    --background-color: #222;
+    --background-color: #000;
     --separator-color: #444;
     --emphasized-text-color: #eee;
     --other-text-color: #999;
@@ -51,7 +51,7 @@ code {
   }
 
   .tooslow {
-    color: #c00 !important;
+    color: #d00 !important;
   }
 
   .error {
@@ -70,7 +70,7 @@ code {
 
 html {
   box-sizing: border-box;
-  font-family: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+  font-family: monospace;
   color: var(--text-color);
   background-color: var(--background-color);
 }
@@ -142,12 +142,12 @@ main {
 .listing {
   min-width: 5em;
   width: 45%;
-  max-width: 45em;
+  max-width: 55em;
   margin-bottom: 2em;
   margin-right: 2em;
 }
 
-@media (max-width: 70em) {
+@media (max-width: 60em) {
   .columns {
     flex-wrap: wrap;
   }
