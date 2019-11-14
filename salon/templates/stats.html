@@ -55,5 +55,13 @@
     {{ timer("highest p90 review response time", "/repo", by_repo.timers.review, deadline=review_deadline) }}
   </section>
 
+  <section class="leaderboards">
+    <h2>People</h2>
+
+    {{ counter("most requested for review", "/user", by_user.counters.review_requested) }}
+
+    {{ counter("most reviews submitted", "/user", by_user.counters.review) }}
+  </section>
+
   <p><a href="{{ url_for('stats', limit=50) }}">See more</a></p>
 {% endblock %}
