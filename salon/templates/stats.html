@@ -54,13 +54,13 @@
   <section class="leaderboards">
     <h2>People</h2>
 
+    {{ counter("most pull requests opened", "/user", by_user.counters.opened) }}
+
     {{ counter("most requested for review", "/user", by_user.counters.review_requested) }}
 
     {{ counter("most reviews submitted", "/user", by_user.counters.review) }}
 
     {{ timer("lowest p90 review response time", "/user", by_user.timers.review, reverse=False, deadline=review_deadline) }}
-
-    {{ counter("most review requests declined", "/user", by_user.counters.review_rejected) }}
 
     {{ timer("highest p90 pull request age", "/user", by_user.timers.open, deadline=merge_deadline) }}
 
