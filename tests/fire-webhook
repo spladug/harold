@@ -1,0 +1,29 @@
+#!/usr/bin/python
+
+import argparse
+import email
+
+import requests
+
+
+def load_request_snapshot(fd):
+    request = email.message_from_file(fd)
+    headers = dict(request)
+    payload = request.get_payload().rstrip("\n")
+    assert int(request["Content-Length"]) == len(payload)
+    return headers, payload
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", type=argparse.FileType("r"))
+    args = parser.parse_args()
+
+    headers, payload = load_request_snapshot(args.file)
+    response = requests.post("http://localhost:8008/harold/github", headers=headers, data=payload)
+    response.raise_for_status()
+    print(response.text)
+
+
+if __name__ == "__main__":
+    main()
