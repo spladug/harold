@@ -839,7 +839,7 @@ class DeployMonitor(object):
     def acquire(self, irc, sender, channel, *ignored):
         salon = yield self.salons.by_channel(channel)
         if not (salon and salon.allow_deploys):
-            irc.send_message(channel, "@%s: I'm sorry, I'm afraid I can't do that :hal9000: This is a no-deploy salon" % sender)
+            irc.send_message(channel, "@%s: This is a no-deploy salon, there are no deploys here." % sender)
             return
 
         if sender in salon.queue:
