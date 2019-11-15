@@ -45,12 +45,18 @@ class PushDispatcher(object):
         self.salons = salons
 
     @inlineCallbacks
-    def _dispatch_commit(self, repository, branch, commit):
+    def _dispatch_commit(self, sender_username, repository, branch, commit):
         short_url = yield self.shortener.make_short_url(commit['url'])
+        sender = yield self.salons.get_nick_for_user(sender_username)
         author = yield self.salons.get_nick_for_user(_get_commit_author(commit))
 
-        self.bot.send_message(repository.channel,
-                              repository.format % {
+        if sender == author:
+            format = "%(sender)s pushed %(commit_id)s (%(url)s) to %(repository)s/%(branch)s: %(summary)s"
+        else:
+            format = "%(sender)s pushed %(commit_id)s by %(author)s (%(url)s) to %(repository)s/%(branch)s: %(summary)s"
+
+        self.bot.send_message(repository.channel, format % {
+            'sender': sender,
             'repository': repository.name,
             'branch': branch,
 
@@ -61,7 +67,9 @@ class PushDispatcher(object):
         })
 
     @inlineCallbacks
-    def _dispatch_bundle(self, info, repository, branch, commits):
+    def _dispatch_bundle(self, sender_username, info, repository, branch, commits):
+        sender = yield self.salons.get_nick_for_user(sender_username)
+
         authors = collections.Counter()
         for commit in commits:
             nick = yield self.salons.get_nick_for_user(_get_commit_author(commit))
@@ -72,9 +80,14 @@ class PushDispatcher(object):
         commit_range = before[:7] + '..' + after[:7]
         url = info['compare']
 
+        if len(authors) == 1 and sender in authors:
+            format = "%(sender)s pushed %(commit_count)d commits (%(commit_range)s - %(url)s) to %(repository)s/%(branch)s"
+        else:
+            format = "%(sender)s pushed %(commit_count)d commits by %(authors)s (%(commit_range)s - %(url)s) to %(repository)s/%(branch)s"
+
         short_url = yield self.shortener.make_short_url(url)
-        self.bot.send_message(repository.channel,
-                              repository.bundled_format % {
+        self.bot.send_message(repository.channel, format % {
+            'sender': sender,
             'repository': repository.name,
             'branch': branch,
             'authors': ', '.join(a for a, c in authors.most_common()),
@@ -101,15 +114,18 @@ class PushDispatcher(object):
         repository = yield self._get_repository(parsed)
         if not repository:
             return
+
+        sender = parsed["sender"]["login"]
+
         branch = parsed['ref'].split('/')[-1]
         commits = parsed['commits']
 
         if not repository.branches or branch in repository.branches:
             if len(commits) <= _BUNDLE_THRESHOLD:
                 for commit in commits:
-                    self._dispatch_commit(repository, branch, commit)
+                    self._dispatch_commit(sender, repository, branch, commit)
             else:
-                self._dispatch_bundle(parsed, repository, branch, commits)
+                self._dispatch_bundle(sender, parsed, repository, branch, commits)
 
 
 class SalonDatabase(object):

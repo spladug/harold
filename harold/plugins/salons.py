@@ -36,14 +36,6 @@ class Repository(_Repository):
         else:
             return ["master"]
 
-    @property
-    def format(self):
-        return self.format_ or "%(author)s committed %(commit_id)s (%(url)s) to %(repository)s/%(branch)s: %(summary)s"
-
-    @property
-    def bundled_format(self):
-        return self.bundled_format_ or "%(authors)s made %(commit_count)d commits (%(commit_range)s - %(url)s) to %(repository)s/%(branch)s"
-
 
 class SalonManagerPlugin(Plugin):
     def __init__(self, database):
