@@ -6,6 +6,10 @@
   <div class="warning-banner error">
     Harold doesn't have any pull requests for @{{ username }}, did you mean {{ utils.user_link(potential_spelling[0]) }}?
   </div>
+  {% elif potential_spelling is not none: %}
+  <div class="warning-banner error">
+    Harold doesn't have any pull requests for @{{ username }}
+  </div>
   {% else %}
   <section class="listing">
     {% if not username_overridden: %}

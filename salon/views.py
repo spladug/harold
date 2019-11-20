@@ -100,8 +100,7 @@ def salon(override_username=None):
     if override_username and not to_review and not my_pulls:
         all_authors = [row[0] for row in db.session.query(func.distinct(PullRequest.author))]
         if override_username not in all_authors:
-            potential_spelling = difflib.get_close_matches(
-                override_username, all_authors, n=1, cutoff=0.6)
+            potential_spelling = difflib.get_close_matches(override_username, all_authors, n=1, cutoff=0.6)
 
     metrics = load_metrics()
 
