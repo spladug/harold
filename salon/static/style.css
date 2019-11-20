@@ -139,7 +139,7 @@ main {
   flex-wrap: nowrap;
 }
 
-.listing {
+.columns > * {
   min-width: 5em;
   width: 45%;
   max-width: 55em;
@@ -368,4 +368,9 @@ p, dl {
 
 table .user, table .repository, table .user:visited, table .repository:visited {
   text-decoration: none;
+}
+
+.warning-banner {
+  padding: 1em;
+  font-size: large;
 }

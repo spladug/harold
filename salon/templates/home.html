@@ -2,6 +2,11 @@
 {% import "utils.html" as utils %}
 
 {% block content %}
+  {% if potential_spelling: %}
+  <div class="warning-banner error">
+    Harold doesn't have any pull requests for @{{ username }}, did you mean {{ utils.user_link(potential_spelling[0]) }}?
+  </div>
+  {% else %}
   <section class="listing">
     {% if not username_overridden: %}
     <h2>To Review <span class="admonishment"><abbr title="as soon as possible">ASAP</abbr>, within one business day</span></h2>
@@ -89,5 +94,5 @@
     </details>
     {% endfor %}
   </section>
-
+  {% endif %}
 {% endblock %}

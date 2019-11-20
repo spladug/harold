@@ -2,11 +2,13 @@
 
 import collections
 import datetime
+import difflib
 import json
 import re
 
 from baseplate.file_watcher import FileWatcher
 from flask import render_template, request, g
+from sqlalchemy import func
 
 from salon.app import app
 from salon.metrics import load_metrics
@@ -94,6 +96,13 @@ def salon(override_username=None):
         stage = pull_request.review_stage()
         my_pulls[stage].append(pull_request)
 
+    potential_spelling = None
+    if override_username and not to_review and not my_pulls:
+        all_authors = [row[0] for row in db.session.query(func.distinct(PullRequest.author))]
+        if override_username not in all_authors:
+            potential_spelling = difflib.get_close_matches(
+                override_username, all_authors, n=1, cutoff=0.6)
+
     metrics = load_metrics()
 
     return render_template(
@@ -103,6 +112,7 @@ def salon(override_username=None):
         my_pulls=my_pulls,
         to_review=to_review,
         metrics=metrics["user"].get(username.lower(), {"counters": {}, "timers": {}}),
+        potential_spelling=potential_spelling,
     )
 
 
