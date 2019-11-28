@@ -14,6 +14,35 @@ METRICS_HORIZON_DAYS = 90
 FILEWATCHER = FileWatcher(METRICS_FILE_PATH, json.load)
 
 
+HOLIDAYS = [
+    datetime.date(2019, 1, 1),
+    datetime.date(2019, 1, 2),
+    datetime.date(2019, 1, 21),
+    datetime.date(2019, 2, 18),
+    datetime.date(2019, 5, 27),
+    datetime.date(2019, 7, 4),
+    datetime.date(2019, 9, 2),
+    datetime.date(2019, 11, 28),
+    datetime.date(2019, 11, 29),
+    datetime.date(2019, 12, 24),
+    datetime.date(2019, 12, 25),
+    datetime.date(2019, 12, 31),
+
+    datetime.date(2020, 1, 1),
+    datetime.date(2020, 1, 2),
+    datetime.date(2020, 1, 20),
+    datetime.date(2020, 2, 17),
+    datetime.date(2020, 5, 25),
+    datetime.date(2020, 7, 3),
+    datetime.date(2020, 9, 7),
+    datetime.date(2020, 11, 26),
+    datetime.date(2020, 11, 27),
+    datetime.date(2020, 12, 24),
+    datetime.date(2020, 12, 25),
+    datetime.date(2020, 12, 31),
+]
+
+
 @app.context_processor
 def add_metrics_horizon():
     return {"metrics_horizon": METRICS_HORIZON_DAYS}
@@ -43,7 +72,7 @@ def business_time_elapsed(start, end):
     business_days = 0
     while (end-now).days > 0:
         now += datetime.timedelta(days=1)
-        if now.weekday() not in (5, 6):
+        if now.weekday() not in (5, 6) and now.date() not in HOLIDAYS:
             business_days += 1
 
     time_elapsed = end - now
