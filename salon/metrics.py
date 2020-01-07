@@ -180,8 +180,12 @@ class EventCollector(object):
 
     def flush(self):
         if self.opened_at:
-            closed_at = self.closed_at or datetime.datetime.utcnow()
-            self.metrics.record_duration("open", self.opened_at, closed_at, tags={"user": self.author})
+            now = datetime.datetime.utcnow()
+            self.metrics.record_duration("open", self.opened_at, self.closed_at or now, tags={"user": self.author})
+
+            if not self.closed_at:
+                for user, requested_at in self.requested_at.items():
+                    self.metrics.record_duration("review", requested_at, now, tags={"user": user})
 
 
 @app.cli.command()
