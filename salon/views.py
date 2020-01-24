@@ -220,13 +220,16 @@ def log():
         count = 25
     count = min(count, 100)
 
-    event_types = request.args.getlist("event_types")
+    event_types = request.args.getlist("event_type")
+    users = request.args.getlist("user")
 
     query = Event.query.order_by(db.desc(Event.timestamp))
     if before:
         query = query.filter(Event.timestamp <= before)
     if event_types:
         query = query.filter(Event.event.in_(event_types))
+    if users:
+        query = query.filter(Event.actor.in_(users))
     query = query.limit(count)
 
     return render_template(
