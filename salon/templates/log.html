@@ -5,6 +5,7 @@
 
 <table>
   <caption>Review Log</caption>
+{% if events: %}
 {% for event in events: %}
   <tr>
     <td>{{ utils.timestamp(event.timestamp) }}</td>
@@ -35,11 +36,18 @@
     </td>
   </tr>
 {% endfor %}
+{% else %}
+  <tr>
+    <td colspan="4">No events found</td>
+  </tr>
+{% endif %}
 </table>
 
 <nav class="pagination">
   <ol>
+    {% if events: %}
     <li>← <a href="{{ url_for("log", before=events[-1].timestamp.replace(microsecond=0).isoformat(), count=count, event_types=event_types) }}">Older</a>
+    {% endif %}
     {% if before: %}
     <li><a href="{{ url_for("log", count=count, event_types=event_types) }}">Back to the present</a> →
     {% endif %}
