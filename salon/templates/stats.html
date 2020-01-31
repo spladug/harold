@@ -42,7 +42,7 @@
   do not include weekends. Calculations are made once per minute.</p>
 
   <section class="leaderboards">
-    <h2>Repositories</h2>
+    <h2 id="repositories">Repositories</h2>
 
     {{ counter("most pull requests opened", "/repo", by_repo.counters.opened) }}
 
@@ -56,7 +56,7 @@
   </section>
 
   <section class="leaderboards">
-    <h2>People</h2>
+    <h2 id="people">People</h2>
 
     {{ counter("most requested for review", "/user", by_user.counters.review_requested) }}
 
