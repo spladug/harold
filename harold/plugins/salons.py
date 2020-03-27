@@ -63,7 +63,7 @@ class SalonManagerPlugin(Plugin):
         returnValue(salons)
 
     @inlineCallbacks
-    def create_salon(self, name, conch_emoji, deploy_hours_start, deploy_hours_end, tz):
+    def create_salon(self, name, conch_emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys=True):
         yield self.database.runOperation(
             "INSERT INTO salons (name, conch_emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys) VALUES (?, ?, ?, ?, ?, ?)",
             (name, conch_emoji, fmt_time(deploy_hours_start),
@@ -75,7 +75,7 @@ class SalonManagerPlugin(Plugin):
             deploy_hours_start,
             deploy_hours_end,
             tz,
-            allow_deploys=True,
+            allow_deploys=allow_deploys,
         )
         returnValue(salon)
 

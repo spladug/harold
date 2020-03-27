@@ -502,13 +502,14 @@ class SalonManager(object):
         returnValue(salon)
 
     @inlineCallbacks
-    def create(self, channel_name, emoji, deploy_hours_start, deploy_hours_end, tz):
+    def create(self, channel_name, emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys=True):
         config = yield self.salon_config_db.create_salon(
             channel_name.lstrip("#"),
             emoji,
             deploy_hours_start,
             deploy_hours_end,
             tz,
+            allow_deploys,
         )
         new_salon = Salon(self.salon_config_db, config)
         self.salons[channel_name] = new_salon
@@ -575,22 +576,33 @@ class DeployMonitor(object):
             irc.send_message(channel, "This channel is already a salon!")
             return
 
-        if not channel.endswith("-salon"):
-            irc.send_message(channel, "Salon channel names should end with -salon")
-            return
+        if emoji != "--no-deploys":
+            allow_deploys = True
 
-        if not re.match("^:[^:]+:$", emoji):
-            irc.send_message(channel, "That doesn't look like a valid emoji.")
-            return
+            if not channel.endswith("-salon"):
+                irc.send_message(channel, "Salon channel names should end with -salon")
+                return
+
+            if not re.match("^:[^:]+:$", emoji):
+                irc.send_message(channel, "That doesn't look like a valid emoji.")
+                return
+        else:
+            allow_deploys = False
+            emoji = ":no_entry:"
 
         new_salon = yield self.salons.create(
             channel,
             emoji,
             self.config.default_hours_start,
             self.config.default_hours_end,
-            self.config.default_tz
+            self.config.default_tz,
+            allow_deploys=allow_deploys,
         )
-        new_salon.update_topic(irc, force=True)
+
+        if allow_deploys:
+            new_salon.update_topic(irc, force=True)
+        else:
+            irc.send_message(channel, "This is now a no-deploy salon.")
 
     @inlineCallbacks
     def desalonify(self, irc, sender, channel, *ignored):
