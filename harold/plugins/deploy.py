@@ -579,7 +579,7 @@ class DeployMonitor(object):
         if emoji != "--no-deploys":
             allow_deploys = True
 
-            if not channel.endswith("-salon"):
+            if not channel.endswith("-salon") and "--force" not in args:
                 irc.send_message(channel, "Salon channel names should end with -salon")
                 return
 
