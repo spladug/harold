@@ -6,7 +6,6 @@ import re
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from harold.plugins.http import ProtectedResource
-from harold.shorturl import UrlShortener
 from harold.utils import dehilight
 
 
@@ -39,14 +38,13 @@ def _get_commit_author(commit):
 
 
 class PushDispatcher(object):
-    def __init__(self, bot, shortener, salons):
+    def __init__(self, bot, salons):
         self.bot = bot
-        self.shortener = shortener
         self.salons = salons
 
     @inlineCallbacks
     def _dispatch_commit(self, sender_username, repository, branch, commit):
-        short_url = yield self.shortener.make_short_url(commit['url'])
+        short_url = commit['url']
         sender = yield self.salons.get_nick_for_user(sender_username)
         author = yield self.salons.get_nick_for_user(_get_commit_author(commit))
 
@@ -85,7 +83,7 @@ class PushDispatcher(object):
         else:
             format = "%(sender)s pushed %(commit_count)d commits by %(authors)s (%(commit_range)s - %(url)s) to %(repository)s/%(branch)s"
 
-        short_url = yield self.shortener.make_short_url(url)
+        short_url = url
         self.bot.send_message(repository.channel, format % {
             'sender': sender,
             'repository': repository.name,
@@ -383,9 +381,8 @@ class Salon(object):
                      "reviewer.",
     }
 
-    def __init__(self, bot, shortener, salons, database):
+    def __init__(self, bot, salons, database):
         self.bot = bot
-        self.shortener = shortener
         self.salons = salons
         self.database = SalonDatabase(database)
 
@@ -418,8 +415,7 @@ class Salon(object):
 
         yield self.database.process_pullrequest(sender_username, pull_request, repository_name)
 
-        html_link = pull_request["_links"]["html"]["href"]
-        short_url = yield self.shortener.make_short_url(html_link)
+        short_url = html_link = pull_request["_links"]["html"]["href"]
 
         if parsed["action"] == "review_requested":
             if "requested_reviewer" not in parsed:
@@ -545,8 +541,7 @@ class Salon(object):
 
         repository_name = parsed["repository"]["full_name"]
         repository = yield self.salons.get_repository(repository_name)
-        html_link = parsed["issue"]["pull_request"]["html_url"]
-        short_url = yield self.shortener.make_short_url(html_link)
+        short_url = html_link = parsed["issue"]["pull_request"]["html_url"]
         pr_id = int(parsed["issue"]["number"])
         timestamp = _parse_timestamp(parsed["comment"]["created_at"])
 
@@ -591,8 +586,7 @@ class Salon(object):
 
         repository_name = parsed["repository"]["full_name"]
         repository = yield self.salons.get_repository(repository_name)
-        html_link = parsed["pull_request"]["html_url"]
-        short_url = yield self.shortener.make_short_url(html_link)
+        short_url = html_link = parsed["pull_request"]["html_url"]
         pr_id = int(parsed["pull_request"]["number"])
         timestamp = _parse_timestamp(parsed["review"]["submitted_at"])
         sender = parsed["sender"]["login"]
@@ -639,12 +633,11 @@ class GitHubListener(ProtectedResource):
 
     def __init__(self, http, bot, salons, database):
         ProtectedResource.__init__(self, http)
-        shortener = UrlShortener()
 
         self.salons = salons
 
-        push_dispatcher = PushDispatcher(bot, shortener, salons)
-        salon = Salon(bot, shortener, salons, database)
+        push_dispatcher = PushDispatcher(bot, salons)
+        salon = Salon(bot, salons, database)
 
         self.dispatchers = {
             "ping": push_dispatcher.dispatch_ping,
