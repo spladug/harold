@@ -22,9 +22,6 @@ from harold.handlers import Handlers, NoHandlerError
 from harold.plugin import Plugin
 
 
-PROVIDES_HAROLD_PLUGINS = ["irc"]
-
-
 class SlackConfig(PluginConfig):
     token = Option(str)
 
