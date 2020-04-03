@@ -8,8 +8,13 @@ from twisted.application import internet
 from twisted.internet import reactor
 from twisted.internet.endpoints import serverFromString
 
-from harold.plugin import Plugin
 from harold.utils import constant_time_compare
+
+
+class HttpPlugin(object):
+    def __init__(self, root, hmac_secret):
+        self.root = root
+        self.hmac_secret = hmac_secret
 
 
 class AuthenticationError(Exception):
@@ -60,7 +65,7 @@ class ProtectedResource(resource.Resource):
         return response or ""
 
 
-def make_plugin(app_config):
+def make_plugin(application, app_config):
     http_config = config.parse_config(app_config, {
         "endpoint": config.String,
         "hmac_secret": config.String,
@@ -75,10 +80,6 @@ def make_plugin(app_config):
 
     endpoint = serverFromString(reactor, http_config.endpoint)
     service = internet.StreamServerEndpointService(endpoint, site)
+    service.setServiceParent(application)
 
-    plugin = Plugin()
-    plugin.root = harold
-    plugin.hmac_secret = http_config.hmac_secret
-    plugin.add_service(service)
-
-    return plugin
+    return HttpPlugin(harold, http_config.hmac_secret)

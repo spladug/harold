@@ -3,7 +3,6 @@ import pytz
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from harold.plugin import Plugin
 from harold.utils import (
     fmt_time,
     parse_time,
@@ -37,9 +36,8 @@ class Repository(_Repository):
             return ["master"]
 
 
-class SalonManagerPlugin(Plugin):
+class SalonManagerPlugin(object):
     def __init__(self, database):
-        Plugin.__init__(self)
         self.database = database
 
     @inlineCallbacks

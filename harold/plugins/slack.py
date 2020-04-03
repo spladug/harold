@@ -19,7 +19,6 @@ from twisted.web.http_headers import Headers
 from zope.interface import implementer
 
 from harold.handlers import Handlers, NoHandlerError
-from harold.plugin import Plugin
 
 
 class FormEncodedBodyProducer(object):
@@ -372,10 +371,8 @@ class SlackDataCache(object):
             self._channels[channel["id"]]["name"] = channel["name"]
 
 
-class SlackPlugin(Plugin):
+class SlackPlugin(object):
     def __init__(self, api_client):
-        super(SlackPlugin, self).__init__()
-
         self._handlers = Handlers()
         self._data_cache = SlackDataCache(api_client)
         self._bot = SlackBot(api_client, self._data_cache)
@@ -441,7 +438,7 @@ class SlackPlugin(Plugin):
             traceback.print_exc()
 
 
-def make_plugin(app_config):
+def make_plugin(application, app_config):
     slack_config = config.parse_config(app_config, {
         "token": config.String,
     })
@@ -458,5 +455,5 @@ def make_plugin(app_config):
         autoPingTimeout=10,
     )
     service = ClientService(endpoint, factory)
-    plugin.add_service(service)
+    service.setServiceParent(application)
     return plugin
