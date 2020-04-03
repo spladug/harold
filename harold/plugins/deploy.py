@@ -10,11 +10,11 @@ import traceback
 
 from enum import Enum
 
+from baseplate import config
 from twisted.web import resource, server
 from twisted.internet import reactor, task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from harold.conf import PluginConfig, Option, tup
 from harold.plugins.http import ProtectedResource
 from harold.plugins.salons import WouldOrphanRepositoriesError
 from harold.utils import (
@@ -39,15 +39,6 @@ CONCH_TTL = 60*55
 
 # how long in seconds they have to respond before we actually expire it
 CONCH_GRACE = 60*5
-
-
-class DeployConfig(PluginConfig):
-    organizations = Option(tup)
-    default_hours_start = Option(parse_time)
-    default_hours_end = Option(parse_time)
-    default_tz = Option(pytz.timezone)
-    blackout_hours_start = Option(parse_time)
-    blackout_hours_end = Option(parse_time)
 
 
 class DeployHoldType(Enum):
@@ -1109,8 +1100,15 @@ class DeployMonitor(object):
                 sender, message))
 
 
-def make_plugin(config, http, irc, salons):
-    deploy_config = DeployConfig(config)
+def make_plugin(app_config, http, irc, salons):
+    deploy_config = config.parse_config(app_config, {
+        "organizations": config.TupleOf(config.String),
+        "default_hours_start": parse_time,
+        "default_hours_end": parse_time,
+        "default_tz": pytz.timezone,
+        "blackout_hours_start": parse_time,
+        "blackout_hours_end": parse_time,
+    })
     monitor = DeployMonitor(deploy_config, irc, salons)
 
     # set up http api

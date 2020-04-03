@@ -2,20 +2,14 @@ import hashlib
 import hmac
 import urlparse
 
+from baseplate import config
 from twisted.web import resource, server
 from twisted.application import internet
 from twisted.internet import reactor
 from twisted.internet.endpoints import serverFromString
 
 from harold.plugin import Plugin
-from harold.conf import PluginConfig, Option
 from harold.utils import constant_time_compare
-
-
-class HttpConfig(PluginConfig):
-    endpoint = Option(str)
-    hmac_secret = Option(str, default=None)
-    public_root = Option(str, default="")
 
 
 class AuthenticationError(Exception):
@@ -66,8 +60,11 @@ class ProtectedResource(resource.Resource):
         return response or ""
 
 
-def make_plugin(config):
-    http_config = HttpConfig(config)
+def make_plugin(app_config):
+    http_config = config.parse_config(app_config, {
+        "endpoint": config.String,
+        "hmac_secret": config.String,
+    })
 
     root = resource.Resource()
     harold = resource.Resource()

@@ -1,18 +1,8 @@
+from baseplate import config
 from sqlalchemy.engine import url
 from twisted.enterprise.adbapi import ConnectionPool
 
-from harold.conf import PluginConfig, Option
 from harold.plugin import Plugin
-
-
-class DatabaseConfig(PluginConfig):
-    connection_string = Option(str)
-
-    def get_module_and_params(self):
-        """Parse the SQLAlchemy connection string and return DBAPI info."""
-        sa_url = url.make_url(self.connection_string)
-        dialect_cls = sa_url.get_dialect()
-        return dialect_cls.dbapi(), sa_url.translate_connect_args()
 
 
 class DatabasePlugin(ConnectionPool, Plugin):
@@ -20,10 +10,14 @@ class DatabasePlugin(ConnectionPool, Plugin):
 
     def __init__(self, db_config):
         Plugin.__init__(self)
-        self.module, kwargs = db_config.get_module_and_params()
+
+        self.module = db_config.connection_string.get_dialect().dbapi()
+        kwargs = db_config.connection_string.translate_connect_args()
         ConnectionPool.__init__(self, self.module.__name__, **kwargs)
 
 
-def make_plugin(config):
-    db_config = DatabaseConfig(config)
+def make_plugin(app_config):
+    db_config = config.parse_config(app_config, {
+        "connection_string": url.make_url,
+    })
     return DatabasePlugin(db_config)

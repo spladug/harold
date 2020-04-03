@@ -8,6 +8,7 @@ from autobahn.twisted.websocket import (
     WebSocketClientFactory,
     WebSocketClientProtocol,
 )
+from baseplate import config
 from twisted.application.internet import ClientService
 from twisted.internet import reactor
 from twisted.internet.defer import succeed, inlineCallbacks, returnValue, Deferred
@@ -17,13 +18,8 @@ from twisted.web.client import Agent, HTTPConnectionPool, readBody
 from twisted.web.http_headers import Headers
 from zope.interface import implementer
 
-from harold.conf import PluginConfig, Option
 from harold.handlers import Handlers, NoHandlerError
 from harold.plugin import Plugin
-
-
-class SlackConfig(PluginConfig):
-    token = Option(str)
 
 
 class FormEncodedBodyProducer(object):
@@ -445,8 +441,10 @@ class SlackPlugin(Plugin):
             traceback.print_exc()
 
 
-def make_plugin(config, http=None):
-    slack_config = SlackConfig(config)
+def make_plugin(app_config):
+    slack_config = config.parse_config(app_config, {
+        "token": config.String,
+    })
 
     api_client = SlackWebClient(slack_config.token)
     endpoint = SlackEndpoint(api_client)
