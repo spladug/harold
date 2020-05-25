@@ -275,6 +275,7 @@ class SlackBot(object):
             channel = channels_by_name[channel_name]
         except KeyError:
             print("Attempted to send message to unknown channel: %s" % channel_name)
+            return
 
         try:
             yield self._api_client.make_request(
