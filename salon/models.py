@@ -125,6 +125,7 @@ class Salon(db.Model):
     deploy_hours_end = db.Column(db.String, default=True)
     tz = db.Column(db.String, default=True)
     allow_deploys = db.Column(db.Boolean, default=True)
+    after_hours_message = db.Column(db.String, nullable=True)
 
 
 class Repository(db.Model):

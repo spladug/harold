@@ -252,6 +252,7 @@ class Salon(object):
         self.conch_emoji = config.conch_emoji.encode("utf-8")
         self.deploy_hours_start = config.deploy_hours_start
         self.deploy_hours_end = config.deploy_hours_end
+        self.after_hours_message = config.after_hours_message
         self.tz = config.tz
         self.deploys = {}
         self.current_hold = None
@@ -310,10 +311,14 @@ class Salon(object):
             if new_conch != self.current_conch:
                 is_work_hours = self.current_time_status() in ("work_time", "cleanup_time")
 
+                after_hours_message = ""
+                if self.after_hours_message:
+                    after_hours_message = " -- " + self.after_hours_message
+
                 if self.current_hold is not None:
-                    irc.send_message(self.channel, "@%s: you have the %s (but deploys are on hold)" % (new_conch, self.conch_emoji))
+                    irc.send_message(self.channel, "@%s: you have the %s (but deploys are on hold%s)" % (new_conch, self.conch_emoji, after_hours_message))
                 elif not is_work_hours:
-                    irc.send_message(self.channel, "@%s: you have the %s (but it's after hours)" % (new_conch, self.conch_emoji))
+                    irc.send_message(self.channel, "@%s: you have the %s (but it's after hours%s)" % (new_conch, self.conch_emoji, after_hours_message))
                 else:
                     irc.send_message(self.channel, "@%s: you have the %s" % (new_conch, self.conch_emoji))
 

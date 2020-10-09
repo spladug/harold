@@ -9,7 +9,7 @@ from harold.utils import (
 )
 
 
-_Salon = collections.namedtuple("Salon", "name conch_emoji deploy_hours_start deploy_hours_end tz allow_deploys")
+_Salon = collections.namedtuple("Salon", "name conch_emoji deploy_hours_start deploy_hours_end tz allow_deploys after_hours_message")
 _Repository = collections.namedtuple("Repository", "name salon branches_ format_ bundled_format_")
 
 
@@ -43,12 +43,12 @@ class SalonManagerPlugin(object):
     @inlineCallbacks
     def get_salons(self):
         rows = yield self.database.runQuery(
-            "SELECT name, conch_emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys FROM salons"
+            "SELECT name, conch_emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys, after_hours_message FROM salons"
         )
 
         salons = []
         for row in rows:
-            name, conch_emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys = row
+            name, conch_emoji, deploy_hours_start, deploy_hours_end, tz, allow_deploys, after_hours_message = row
             salon = Salon(
                 name,
                 conch_emoji,
@@ -56,6 +56,7 @@ class SalonManagerPlugin(object):
                 parse_time(deploy_hours_end),
                 pytz.timezone(tz),
                 allow_deploys=allow_deploys,
+                after_hours_message=after_hours_message,
             )
             salons.append(salon)
         returnValue(salons)
@@ -74,6 +75,7 @@ class SalonManagerPlugin(object):
             deploy_hours_end,
             tz,
             allow_deploys=allow_deploys,
+            after_hours_message=None,
         )
         returnValue(salon)
 
