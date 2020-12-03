@@ -1041,7 +1041,7 @@ class DeployMonitor(object):
 
         if failed_hosts:
             self.irc.bot.send_message(
-                "#monitoring",
+                "#rollout-errors",
                 "Deploy `%s` in %s encountered errors on the "
                     "following hosts: %s. See %s for more information." % (
                         id, salon.channel, ", ".join(sorted(failed_hosts)),
