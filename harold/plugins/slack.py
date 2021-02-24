@@ -238,7 +238,7 @@ class SlackBot(object):
 
         try:
             yield self._api_client.make_request(
-                "channels.setTopic",
+                "conversations.setTopic",
                 channel=channel["id"],
                 topic=topic[:250],
             )
@@ -309,7 +309,9 @@ class SlackDataCache(object):
             self._users[user["id"]] = user
 
         channels = yield self._api_client.make_paginated_request(
-            "channels.list", "channels", exclude_members=True)
+            "conversations.list", "channels",
+            exclude_members=True, exclude_archived=True,
+            types="public_channel")
         for channel in channels:
             self._channels[channel["id"]] = channel
 
