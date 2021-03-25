@@ -44,7 +44,7 @@ PyJWT==1.7.1
 pyOpenSSL==17.5.0
 pyserial==2.6
 pytz==2019.3
-PyYAML==5.3.1
+PyYAML==5.4
 requests==2.23.0
 service-identity==18.1.0
 six==1.11.0
