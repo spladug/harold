@@ -236,6 +236,10 @@ class SlackBot(object):
     def set_topic(self, channel_name, topic):
         channel = yield self._data_cache.get_channel_by_name(channel_name)
 
+        if not channel:
+            print("Failed while setting topic in %s: could not find channel id", channel_name)
+            return
+
         try:
             yield self._api_client.make_request(
                 "conversations.setTopic",
