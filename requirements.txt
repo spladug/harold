@@ -1,6 +1,6 @@
 asn1crypto==0.24.0
 attrs==19.3.0
-autobahn==18.3.1
+autobahn==20.12.3
 Automat==0.6.0
 baseplate==0.30.6
 blinker==1.3
